@@ -10,6 +10,7 @@ endif()
 
 # 添加依赖头文件目录
 SET(INCDIR
+${PREFIX}/src
     ${PREFIX}/src/base
     ${PREFIX}/src/pcap
 )
@@ -21,6 +22,11 @@ SET(SRCS
     ${PREFIX}/src/base/SignalCatch.cpp
     ${PREFIX}/src/base/BackTrace.cpp
     ${PREFIX}/src/base/util.cpp
+    ${PREFIX}/src/base/Logger.cpp
+    ${PREFIX}/src/base/File.cpp
+    ${PREFIX}/src/base/local_time.cpp
+    ${PREFIX}/src/pcap/PcapParse.cpp
+    ${PREFIX}/src/GlobalValue.cpp
 )
 
 SET(SRCS ${SRCS}
@@ -35,6 +41,7 @@ SET(SRCS ${SRCS}
 #添加依赖库
 SET(LIB_SO
     -ldl
+    -lpthread
 )
 
 SET(RUN_MAIN "idump")
