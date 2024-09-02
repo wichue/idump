@@ -14,6 +14,8 @@
 
 #include "local_time.h"
 #include "Logger.h"
+#include "MemoryHandle.h"
+#include "GlobalValue.h"
 
 namespace chw {
 
@@ -248,39 +250,43 @@ void PrintBuffer(void* pBuff, unsigned int nLen)
     {
         return;
     }
+    static char* szHex_all = (char*)_NEW_MEM_(gConfigCmd.max * 4);
 
-    const int nBytePerLine = 16;
+    const int nBytePerLine = 16;//每一行显示的字节数
     unsigned char* p = (unsigned char*)pBuff;
-    char szHex[3*nBytePerLine+1] = {0};
 
-    // printf("-----------------begin-------------------\n");
+    _SET_MEM_(szHex_all,gConfigCmd.max * 4,0,gConfigCmd.max * 4);
+    uint32_t uIndex = 0;
+    uint32_t uCount = 0;
+
     for (unsigned int i=0; i<nLen; ++i)
     {
-        int idx = 3 * (i % nBytePerLine);
-        if (0 == idx)
-        {
-            memset(szHex, 0, sizeof(szHex));
-        }
 #ifdef WIN32
-        sprintf_s(&szHex[idx], 4, "%02x ", p[i]);// buff长度要多传入1个字节
+        sprintf_s(&szHex_all[uIndex], 4, "%02x ", p[i]);// buff长度要多传入1个字节
 #else
-        snprintf(&szHex[idx], 4, "%02x ", p[i]); // buff长度要多传入1个字节
+        snprintf(&szHex_all[uIndex], 4, "%02x ", p[i]); // buff长度要多传入1个字节
 #endif
+        uIndex += 3;//去掉每次拼接加的\0
         
         // 以16个字节为一行，进行打印
         if (0 == ((i+1) % nBytePerLine))
         {
-            PrintD("%s", szHex);
+            szHex_all[uIndex] = '\n';
+            uIndex++;
+        }
+
+        uCount++;
+        if(uCount >= gConfigCmd.max)
+        {
+            szHex_all[uIndex++] = '.';
+            szHex_all[uIndex++] = '.';
+            szHex_all[uIndex++] = '.';
+            break;
         }
     }
+    szHex_all[uIndex] = '\0';
 
-    // 打印最后一行未满16个字节的内容
-    if (0 != (nLen % nBytePerLine))
-    {
-        PrintD("%s", szHex);
-    }
-
-    // printf("------------------end-------------------\n");
+    PrintD("%s", szHex_all);
 }
 
 } /* namespace chw */

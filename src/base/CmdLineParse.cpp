@@ -19,11 +19,12 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
         {"save", required_argument, NULL, 's'},
         {"filter", required_argument, NULL, 'g'},
         {"more", no_argument, NULL, 'm'},
+        {"max", required_argument, NULL, 'n'},
         {NULL, 0, NULL, 0}
     };
     int flag;
    
-    while ((flag = getopt_long(argc, argv, "f:p:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "hvf:s:g:mn:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'f':
                 printf("file name:%s\n", optarg);
@@ -38,6 +39,9 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
                 break;
             case 'm':
                 gConfigCmd.more = true;
+                break;
+            case 'n':
+                gConfigCmd.max = atoi(optarg);
                 break;
                 
        

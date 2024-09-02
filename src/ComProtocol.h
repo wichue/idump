@@ -89,6 +89,7 @@ struct ConfigCmd
     uint32_t end;//处理报文时尾部忽略的字节数(--end)，没有该选项默认为0
 
     bool more;//是否按字节打印报文(--more)，默认不打印
+    uint16_t max;//每一帧最大打印的字节数(--max)，默认160
 
     ConfigCmd()
     {
@@ -97,6 +98,7 @@ struct ConfigCmd
         save = nullptr;
         start = 0;
         end = 0;
+        max = 160;
     }
 };
 
