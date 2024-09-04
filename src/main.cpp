@@ -24,7 +24,19 @@ void sigend_handler_crash(int sig)
     printf("catch crash signal:%d,exit now.\n",sig);
     chw_assert();
 }
-
+/**
+ * @brief 
+ * 功能：
+ * 1、抓包报文概要和报文16进制内容打印到日志文件或控制台。
+ * 2、可设置报文16进制内容打印的最大长度。
+ * 3、可根据传统的报文长度、协议类型、IP、port等过滤报文。
+ * 4、高级过滤：指定报文起点字节数，要比对的报文16进制段，过滤出该位置包含该16进制段的报文。
+ * 5、高级过滤选项从JOSN文件读取，过滤多个字段，并标记每个报文的描述。
+ * 6、两个抓包文件进行逐字节比较，检查丢包、错包等问题，比较时可忽略指定字节数量的前缀和后缀。
+ * @param argc 
+ * @param argv 
+ * @return int 
+ */
 int main(int argc, char **argv)
 {
     chw::SignalCatch::Instance().CustomAbort(sigend_handler_abort);

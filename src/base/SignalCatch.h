@@ -13,13 +13,13 @@ public:
     static SignalCatch &Instance();
 
     /**
-     * @brief catch SIGINT,SIGTERM,SIGHUP
+     * @brief catch signal，处理用户操作导致的中断
      * 
      */
     void CustomAbort(void (*handler)(int));
 
     /**
-     * @brief catch SIGSEGV 
+     * @brief catch signal，处理非用户操作导致的中断 
      * 
      * @param handler 
      */
