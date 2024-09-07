@@ -20,11 +20,12 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
         {"filter", required_argument, NULL, 'g'},
         {"more", no_argument, NULL, 'm'},
         {"max", required_argument, NULL, 'n'},
+        {"json", required_argument, NULL, 'j'},
         {NULL, 0, NULL, 0}
     };
     int flag;
    
-    while ((flag = getopt_long(argc, argv, "hvf:s:g:mn:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "hvf:s:g:mn:j:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'f':
                 printf("file name:%s\n", optarg);
@@ -37,8 +38,8 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
                 gConfigCmd.save = optarg;
                 printf("save name:%s\n", gConfigCmd.save);
                 break;
-            case 'm':
-                gConfigCmd.more = true;
+            case 'j':
+                gConfigCmd.json = optarg;
                 break;
             case 'n':
                 gConfigCmd.max = atoi(optarg);
@@ -52,6 +53,11 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
         }
     }
 
+    return 0;
+}
+
+int32_t CmdLineParse::printf_help()
+{
     return 0;
 }
 

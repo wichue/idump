@@ -1,3 +1,4 @@
-#include "ComProtocol.h"
+#include "GlobalValue.h"
 
-ConfigCmd gConfigCmd;
+chw::ConfigCmd gConfigCmd;
+std::vector<chw::CondJson> g_vCondJson;

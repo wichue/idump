@@ -44,11 +44,11 @@ void PcapParse::parse(const char* filename)
 
     size_t offset = 0;
     // pcap 文件头
-    pcap_file_header* fileHeader = (pcap_file_header*)(buf + offset);
-    offset += sizeof(pcap_file_header);
+    chw::pcap_file_header* fileHeader = (chw::pcap_file_header*)(buf + offset);
+    offset += sizeof(chw::pcap_file_header);
     PrintD("pcap file - magic:%#x version:%d.%d,snaplen:%u", fileHeader->magic, fileHeader->version_major, fileHeader->version_minor,fileHeader->snaplen);
 
-    filtering(fileSize,offset,buf,fileHeader->snaplen);
+    resolve_each_frame(fileSize,offset,buf);
 
     if (buf)
     {
@@ -57,36 +57,30 @@ void PcapParse::parse(const char* filename)
     }
 }
 
-uint32_t PcapParse::filtering(size_t fileSize, size_t offset, char* buf, uint32_t snaplen)
+uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf)
 {
-    PrintD("No.       time                          len");
+    PrintD("No.       time                          len       desc      ");
 
     size_t proto_offset = 0;
     mPackIndex = 0;
     while (offset < fileSize)
     {
         // pcap 包头
-        pcap_pkthdr* pcapHeader = (pcap_pkthdr*)(buf + offset);
-        proto_offset = offset + sizeof(pcap_pkthdr);
+        chw::pcap_pkthdr* pcapHeader = (chw::pcap_pkthdr*)(buf + offset);
+        proto_offset = offset + sizeof(chw::pcap_pkthdr);
 
-        offset += (pcapHeader->caplen + sizeof(pcap_pkthdr));
+        offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
         mPackIndex++;
+
+        //匹配json过滤条件
+        std::string desc = match_json(buf + proto_offset, pcapHeader->caplen);
+        if(desc.size() == 0)
+        {
+            continue;
+        }
         
         // 以太头
-        EthnetHeader_t* ethHeader = (EthnetHeader_t*)(buf + proto_offset);
-
-        //输出日志
-        PrintD("%-10u%-30s%-10u"
-        ,mPackIndex
-        ,chw::getTimeStr("%Y-%m-%d %H:%M:%S",time_t(pcapHeader->ts.tv_sec)).c_str()
-        ,pcapHeader->caplen);
-
-        if(gConfigCmd.more == true)
-        {
-            chw::PrintBuffer(buf + proto_offset,pcapHeader->caplen);
-        }
-
-
+        chw::EthnetHeader_t* ethHeader = (chw::EthnetHeader_t*)(buf + proto_offset);
         uint16_t protocol = ntohs(ethHeader->protoType);
 
         
@@ -104,6 +98,17 @@ uint32_t PcapParse::filtering(size_t fileSize, size_t offset, char* buf, uint32_
         }
 
 
+        //输出日志
+        PrintD("%-10u%-30s%-10u%-10s"
+        ,mPackIndex
+        ,chw::getTimeStr("%Y-%m-%d %H:%M:%S",time_t(pcapHeader->ts.tv_sec)).c_str()
+        ,pcapHeader->caplen
+        ,desc.c_str());
+
+        if(gConfigCmd.max > 0)
+        {
+            chw::PrintBuffer(buf + proto_offset, pcapHeader->caplen);
+        }
     }
 
     PrintD("total package count:%d", mPackIndex);
@@ -111,12 +116,44 @@ uint32_t PcapParse::filtering(size_t fileSize, size_t offset, char* buf, uint32_
     return 0;
 }
 
+std::string PcapParse::match_json(char* buf, size_t size)
+{
+    std::string desc = "";
+    auto iter = g_vCondJson.begin();
+    while(iter != g_vCondJson.end())
+    {
+        if(iter->start >= size)
+        {
+            continue;
+        }
+
+        if(iter->start + iter->compare.size() -1 > size)
+        {
+            continue;
+        }
+
+        if(iter->compare.size() == 0)
+        {
+            continue;
+        }
+
+        if(_CMP_MEM_(iter->compare.c_str(), iter->compare.size(), buf + iter->start - 1, iter->compare.size()) == 0)
+        {
+            desc = iter->desc;
+            break;
+        }
+        iter ++;
+    }
+
+    return desc;
+}
+
 // IP 协议解析
 void PcapParse::ipDecode(const char* buf)
 {
     int offset = 0;
-    IPHeader_t* ipHeader = (IPHeader_t*)(buf + offset);
-    offset += sizeof(IPHeader_t);
+    chw::IPHeader_t* ipHeader = (chw::IPHeader_t*)(buf + offset);
+    offset += sizeof(chw::IPHeader_t);
 
     char srcIp[32] = { 0 };
     char dstIp[32] = { 0 };

@@ -2,6 +2,9 @@
 #define __COMMON_PROTOCOL_H
 
 #include <stdint.h>
+#include <string>
+
+namespace chw {
 
 #pragma pack(1)
 //pacp文件头结构体
@@ -78,18 +81,23 @@ struct TCPHeader_t
 
 #pragma pack()
 
+enum chw_ret{
+    success,
+    fail
+};
+
 //命令行参数
 struct ConfigCmd
 {
     char* file;//pcap文件名(--file)
     char* filter;//过滤器(--filter)
+    char* json;//过滤条件，从json文件读取(--json)
     char* save;//要保存的文件名(--save)，没有该选项则输出到屏幕
 
     uint32_t start;//处理报文时首部忽略的字节数(--start)，没有该选项默认为0
     uint32_t end;//处理报文时尾部忽略的字节数(--end)，没有该选项默认为0
 
-    bool more;//是否按字节打印报文(--more)，默认不打印
-    uint16_t max;//每一帧最大打印的字节数(--max)，默认160
+    uint16_t max;//每帧打印报文的最大字节数(--max)，默认160，0则不打印报文内容
 
     ConfigCmd()
     {
@@ -102,5 +110,13 @@ struct ConfigCmd
     }
 };
 
+//从json文件读取的匹配条件
+struct CondJson
+{
+    uint16_t start;//比较的起始位置，从1开始
+    std::string compare;//要比较的16进制字符串，和该字符串相同则满足条件，*为通配符
+    std::string desc;//满足当前条件报文的描述，会输出到日志上
+};
 
+} // namespace chw
 #endif //__COMMON_PROTOCOL_H

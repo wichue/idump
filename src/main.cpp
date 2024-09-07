@@ -10,6 +10,7 @@
 #include "Logger.h"
 #include "GlobalValue.h"
 #include "PcapParse.h"
+#include "FilterCondition.h"
 
 //捕获ctrl+c
 void sigend_handler_abort(int sig)
@@ -60,8 +61,21 @@ int main(int argc, char **argv)
     }
     chw::Logger::Instance().setWriter(std::make_shared<chw::AsyncLogWriter>());
 
+    if(gConfigCmd.file != nullptr)
+    {
+
+    }
+    else
+    {
+        chw::CmdLineParse::Instance().printf_help();
+    }
+    FilterCondition fc;
+    fc.ParseJson(gConfigCmd.json);
+
     PcapParse pp;
     pp.parse(gConfigCmd.file);
+
+
 
     chw::SignalCatch::Instance().CustomAbort(SIG_DFL);
     chw::SignalCatch::Instance().CustomCrash(SIG_DFL);

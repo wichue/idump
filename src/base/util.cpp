@@ -275,18 +275,119 @@ void PrintBuffer(void* pBuff, unsigned int nLen)
             uIndex++;
         }
 
-        uCount++;
-        if(uCount >= gConfigCmd.max)
         {
-            szHex_all[uIndex++] = '.';
-            szHex_all[uIndex++] = '.';
-            szHex_all[uIndex++] = '.';
-            break;
+            //设置条件跳转出打印
+            uCount++;
+            if(uCount >= gConfigCmd.max)
+            {
+                szHex_all[uIndex++] = '.';
+                szHex_all[uIndex++] = '.';
+                szHex_all[uIndex++] = '.';
+                break;
+            }
         }
     }
     szHex_all[uIndex] = '\0';
 
     PrintD("%s", szHex_all);
+}
+
+bool StrIsNull(const char *value)
+{
+    if(!value || value[0] == '\0')
+    {
+        return true;
+    }
+
+    return false;
+}
+
+unsigned char HextoInt(unsigned char hex)
+{
+    const int DEC = 10;
+    if(('0' <= hex) && ('9' >= hex))
+    {
+        //减去'0'转换为整数
+        return (hex - '0');
+    }
+    else if(('A' <= hex) && ('F' >= hex))
+    {
+        return (hex - 'A' + DEC);
+    }
+    else if(('a' <= hex) && ('f' >= hex))
+    {
+        return (hex - 'a' + DEC);
+    }
+
+    return 0;
+}
+
+std::string StrHex2StrBuf(const char *value)
+{
+    if(StrIsNull(value))
+    {
+        return "";
+    }
+
+    //2个字符表示一个16进制数
+    int len = strlen(value);
+    if(len % 2 != 0)
+    {
+        return "";
+    }
+
+    std::string result(len / 2, '\0');
+    for(int i = 0; i < len; i += 2)
+    {
+        result[i / 2] = HextoInt(value[i]) * 16 + HextoInt(value[i + 1]);
+    }
+
+    return result;
+}
+
+std::string StrHex2StrBuf(const char *value, char wild_card)
+{
+    if(StrIsNull(value))
+    {
+        return "";
+    }
+
+    //2个字符表示一个16进制数
+    int len = strlen(value);
+    if(len % 2 != 0)
+    {
+        return "";
+    }
+
+    std::string result(len / 2, '\0');
+    for(int i = 0; i < len; i += 2)
+    {
+        if(value[i] == wild_card)
+        {
+            result[i / 2] = wild_card;
+        }
+        else
+        {
+            result[i / 2] = HextoInt(value[i]) * 16 + HextoInt(value[i + 1]);
+        }
+        
+    }
+
+    return result;
+}
+
+std::string replaceAll(const std::string& str, const std::string& find, const std::string& rep)
+{
+    std::string::size_type pos = 0;
+    std::string::size_type a = find.size();
+    std::string::size_type b = rep.size();
+
+    std::string res(str);
+    while ((pos = res.find(find, pos)) != std::string::npos) {
+        res.replace(pos, a, rep);
+        pos += b;
+    }
+    return res;
 }
 
 } /* namespace chw */

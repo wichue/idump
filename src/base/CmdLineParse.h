@@ -12,18 +12,10 @@ public:
 
     static CmdLineParse &Instance();
 
-    int parse_arguments(int argc, char **argv);
+    int32_t parse_arguments(int argc, char **argv);
+    int32_t printf_help();
+
 };
-
-
-
-
-
-
-
-
-
-
 
 }//namespace chw
 #endif //__CMD_LINE_PARSE_H

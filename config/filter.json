@@ -1,0 +1,15 @@
+{
+    "name": "cond1",
+    "conds": [
+        {
+            "start": "13",
+            "compare": "0800",
+            "desc": "ipv4"
+        },
+        {
+            "start": "13",
+            "compare": "86dd",
+            "desc": "ipv6"
+        }
+    ]
+}
