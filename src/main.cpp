@@ -61,19 +61,22 @@ int main(int argc, char **argv)
     }
     chw::Logger::Instance().setWriter(std::make_shared<chw::AsyncLogWriter>());
 
+    if(gConfigCmd.json != nullptr)
+    {
+        FilterCondition fc;
+        fc.ParseJson(gConfigCmd.json);
+    }
+
     if(gConfigCmd.file != nullptr)
     {
-
+        PcapParse pp;
+        pp.parse(gConfigCmd.file);
     }
     else
     {
         chw::CmdLineParse::Instance().printf_help();
     }
-    FilterCondition fc;
-    fc.ParseJson(gConfigCmd.json);
 
-    PcapParse pp;
-    pp.parse(gConfigCmd.file);
 
 
 

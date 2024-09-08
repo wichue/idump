@@ -184,6 +184,50 @@ bool isIP(const char *str) {
     return is_ipv4(str) || is_ipv6(str);
 }
 
+std::string sockaddr_ipv4(uint32_t addr) {
+    char ip[16];
+    const char* ret = inet_ntop(AF_INET, &addr, ip, 16);
+    if(ret == nullptr) {
+        return "";
+    } else {
+        return ip;
+    }
+
+    return "";
+}
+
+std::string sockaddr_ipv6(uint8_t* addr) {
+    char ip[64];
+    const char* ret = inet_ntop(AF_INET6, addr, ip, 64);
+    if(ret == nullptr) {
+        return "";
+    } else {
+        return ip;
+    }
+    
+    return "";
+}
+
+std::string MacBuftoStr(const unsigned char* mac_buf) {
+    char str[32] = {0};
+    sprintf(str, "%02X:%02X:%02X:%02X:%02X:%02X",
+            mac_buf[0], mac_buf[1], mac_buf[2],
+            mac_buf[3], mac_buf[4], mac_buf[5]);
+
+    return str;
+}
+
+void StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
+    std::istringstream iss(charArray);
+    int value;
+
+    for (int i = 0; i < 6; i++) {
+        iss >> std::hex >> value;
+        macAddress[i] = static_cast<unsigned char>(value);
+        iss.ignore(1, ':');
+    }
+}
+
 std::string exePath(bool isExe /*= true*/) {
     char buffer[PATH_MAX * 2 + 1] = {0};
     int n = -1;
@@ -374,6 +418,18 @@ std::string StrHex2StrBuf(const char *value, char wild_card)
     }
 
     return result;
+}
+
+std::string HexBuftoString(const unsigned char *value, int len)
+{
+    std::string result(len * 2, '\0');
+    for(int i = 0;i < len; ++i)
+    {
+        char *buff = (char *)result.data() + i * 2;
+        sprintf(buff ,"%02x", value[i]);
+    }
+
+    return std::move(result);
 }
 
 std::string replaceAll(const std::string& str, const std::string& find, const std::string& rep)

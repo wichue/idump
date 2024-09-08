@@ -41,10 +41,11 @@ void FilterCondition::ParseJson(char* jsonpath)
                 //6.array 数组使用迭代遍历，每个元素转换为object解析
                 const picojson::object &obj_i = (*i).get<picojson::object>();
                 tCondJson.start = atoi(obj_i.at("start").get<std::string>().c_str());
-                tCondJson.compare = chw::StrHex2StrBuf(obj_i.at("compare").get<std::string>().c_str(),'*');
+                std::string cmp = obj_i.at("compare").get<std::string>();
+                tCondJson.compare = chw::StrHex2StrBuf(cmp.c_str(),'*');
                 tCondJson.desc = obj_i.at("desc").get<std::string>();
 
-                PrintD("cond index=%d,start=%u,compare=%s,desc=%s",index, tCondJson.start, tCondJson.compare.c_str(), tCondJson.desc.c_str());
+                PrintD("cond index=%d,start=%u,compare=%s,desc=%s",index, tCondJson.start, cmp.c_str(), tCondJson.desc.c_str());
                 index++;
                 g_vCondJson.push_back(tCondJson);
             }

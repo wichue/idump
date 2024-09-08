@@ -48,6 +48,32 @@ bool is_ipv4(const char *host);
 bool is_ipv6(const char *host);
 //判断是否为ip
 bool isIP(const char *str);
+
+/**
+ * @brief ipv4地址转换为字符串
+ * 
+ * @param addr  ip地址
+ * @return std::string .分ip地址字符串
+ */
+std::string sockaddr_ipv4(uint32_t addr);
+
+/**
+ * @brief ipv6地址转换为字符串
+ * 
+ * @param addr  ip地址
+ * @return std::string :分ip地址字符串
+ */
+std::string sockaddr_ipv6(uint8_t* addr);
+
+/**
+ * @brief 内存mac地址转换为字符串
+ * 
+ * @param macAddress    mac地址buf
+ * @return std::string  :分mac地址字符串
+ */
+std::string MacBuftoStr(const unsigned char* mac_buf);
+void StrtoMacBuf(const char* charArray, unsigned char* macAddress);
+
 //字符串是否以xx开头
 bool start_with(const std::string &str, const std::string &substr);
 //字符串是否以xx结尾
@@ -98,6 +124,14 @@ unsigned char HextoInt(unsigned char hex);
 std::string StrHex2StrBuf(const char *value);
 //遇到wild_card时通配符不进行进制转换，wild_card和其后的一个字符被转换为1个wild_card字符
 std::string StrHex2StrBuf(const char *value,char wild_card);
+
+/**
+ * @brief 将内存buffer转换成16进制形式字符串(内存16进制0800->"0800"字符串)
+ * @param value buffer
+ * @param len   长度
+ * @return      转换后的字符串
+ */
+std::string HexBuftoString(const unsigned char *value, int len);
 
 /**
  * @brief 替换字符串中的子串

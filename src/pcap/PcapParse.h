@@ -23,7 +23,11 @@ private:
     uint32_t resolve_each_frame(size_t fileSize, size_t offset, char* buf);
 
     std::string match_json(char* buf, size_t size);
-    void ipDecode(const char* buf);
+    void Ipv4Decode(const char* buf, std::string& pro, std::string& des, std::string& src);
+    void Ipv6Decode(const char* buf, std::string& pro, std::string& des, std::string& src);
+
+    void UdpDecode(const char* buf);
+    void TcpDecode(const char* buf, uint16_t len);
 private:
     uint32_t mPackIndex;
 };
