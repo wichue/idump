@@ -11,6 +11,7 @@
 #include "GlobalValue.h"
 #include "PcapParse.h"
 #include "FilterCondition.h"
+#include "SysInfo.h"
 
 //捕获ctrl+c
 void sigend_handler_abort(int sig)
@@ -77,8 +78,15 @@ int main(int argc, char **argv)
         chw::CmdLineParse::Instance().printf_help();
     }
 
+    uint64_t total = 0;
+    uint64_t free = 0;
+    chw::CptDisk(total,free);
+    PrintD("total=%lu,free=%lu",total,free);
 
-
+    uint64_t MemTotal = 0;
+    uint64_t MemAvailable = 0;
+    chw::CptMemory(MemTotal,MemAvailable);
+    PrintD("MemTotal=%lu,MemAvailable=%lu",MemTotal,MemAvailable);
 
     chw::SignalCatch::Instance().CustomAbort(SIG_DFL);
     chw::SignalCatch::Instance().CustomCrash(SIG_DFL);

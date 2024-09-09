@@ -13,6 +13,7 @@ SET(INCDIR
 ${PREFIX}/src
     ${PREFIX}/src/base
     ${PREFIX}/src/pcap
+    ${PREFIX}/src/common
 )
 INCLUDE_DIRECTORIES(${INCDIR})
 
@@ -25,6 +26,7 @@ SET(SRCS
     ${PREFIX}/src/base/Logger.cpp
     ${PREFIX}/src/base/File.cpp
     ${PREFIX}/src/base/local_time.cpp
+    ${PREFIX}/src/common/SysInfo.cpp
     ${PREFIX}/src/GlobalValue.cpp
     ${PREFIX}/src/pcap/PcapParse.cpp
     ${PREFIX}/src/pcap/FilterCondition.cpp
