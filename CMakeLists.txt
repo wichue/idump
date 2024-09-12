@@ -29,6 +29,7 @@ SET(SRCS
     ${PREFIX}/src/common/SysInfo.cpp
     ${PREFIX}/src/GlobalValue.cpp
     ${PREFIX}/src/pcap/PcapParse.cpp
+    ${PREFIX}/src/pcap/JsonCondition.cpp
     ${PREFIX}/src/pcap/FilterCondition.cpp
 )
 

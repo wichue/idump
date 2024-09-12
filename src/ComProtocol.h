@@ -164,5 +164,106 @@ struct CondJson
     std::string desc;//满足当前条件报文的描述，会输出到日志上
 };
 
+// 条件表达式之间的关系运算符
+enum and_or {
+    _and,// &&
+    _or  // ||
+};
+
+// 条件表达式的关系运算符
+enum _operator {
+    _EQUAL,             // ==
+    _GREATER,           // >
+    _GREATER_EQUAL,     // >=
+    _LESS,              // <
+    _LESS_EQUAL         // <=
+};
+
+// 条件表达式的协议类型
+enum _protocol {
+    _frame, //frame
+    _eth,   //eth
+    _ip,    //ip
+    _arp,   //arp
+    _tcp,   //tcp
+    _udp,   //udp
+};
+
+// frame的条件选项
+enum frame_option {
+
+};
+
+// eth的条件选项
+enum eth_option {
+    eth_dst,
+    eth_src,
+    eth_type
+};
+
+// ip的条件选项
+enum ip_option {
+    ip_hdr_len,
+    ip_version,
+    ip_tos,
+    ip_len,
+    ip_id,
+    ip_fragment,
+    ip_ttl,
+    ip_proto,
+    ip_checksum,
+    ip_saddr,
+    ip_daddr,
+};
+
+// tcp的条件选项
+enum tcp_option {
+    tcp_hdr_len,
+    tcp_srcport,
+    tcp_dstport,
+    tcp_seq,
+    tcp_ack,
+
+    tcp_fin,
+    tcp_syn,
+    tcp_reset,
+    tcp_push,
+    tcp_ack_flag,
+    tcp_urg,
+    tcp_ece,
+    tcp_cwr,
+
+    tcp_window_size,
+    tcp_checksum,
+    tcp_urgent_pointer
+};
+
+// udp的条件选项
+enum udp_option {
+    udp_srcport,    // 源端口号
+    udp_dstport,    // 目的端口号
+    udp_length,     // udp报头+负载的总长度
+    udp_checksum    // 头部和数据部分校验和
+};
+
+
+
+// 条件表达式
+struct FilterCond {
+    bool bValid = false;// 是否有效的条件
+    and_or ao;// 与下一个FilterCond是 && 还是 || 关系
+    std::string desc;// 来自命令行的原始条件
+    _operator op;// 比较运算符
+    std::string exp_front;// 比较运算符前面的表达式
+    std::string exp_back;// 比较运算符后面的表达式
+    
+    bool non = false;// 最前面是否包含 ! 运算符，最多只能有一个!运算符，不像wireshark可以嵌套多个
+
+    _protocol potol;// 协议类型
+    std::string value;// 协议的参数选项
+};
+
+
+
 } // namespace chw
 #endif //__COMMON_PROTOCOL_H

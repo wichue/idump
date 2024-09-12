@@ -10,7 +10,7 @@
 #include "Logger.h"
 #include "GlobalValue.h"
 #include "PcapParse.h"
-#include "FilterCondition.h"
+#include "JsonCondition.h"
 #include "SysInfo.h"
 
 //捕获ctrl+c
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 
     if(gConfigCmd.json != nullptr)
     {
-        FilterCondition fc;
+        JsonCondition fc;
         fc.ParseJson(gConfigCmd.json);
     }
 

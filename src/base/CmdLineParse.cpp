@@ -44,6 +44,10 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
             case 'n':
                 gConfigCmd.max = atoi(optarg);
                 break;
+            case 'g':
+                printf("filter name:%s\n", optarg);
+                gConfigCmd.filter = optarg;
+                break;
                 
        
             default:

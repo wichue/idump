@@ -1,54 +1,157 @@
 #include "FilterCondition.h"
-
-#include "File.h"
-#include "picojson.h"
-#include "Logger.h"
-#include "GlobalValue.h"
+#include <string>
+#include <vector>
 #include "util.h"
+#include "Logger.h"
 
-void FilterCondition::ParseJson(char* jsonpath)
+void FilterCondition::ParseFilter(char* filter)
 {
-    std::string json = chw::File::loadFile(jsonpath);
+    std::string filter_trim = chw::replaceAll(filter," ","");
+    PrintD("filter_trim=%s\n",filter_trim.c_str());
 
-    //1.解析字符串，获取json value
-    picojson::value val_root;
-    std::string err = picojson::parse(val_root, json);
-    if (! err.empty()) {
-        PrintD("ParseJson err=%s",err.c_str());
+    std::vector<chw::FilterCond> conds;
+    //1.解析与或条件
+    std::vector<std::string> msg_or = chw::split(filter_trim,"||");
+    auto iter_or = msg_or.begin();
+    while(iter_or != msg_or.end())
+    {
+        std::vector<std::string> msg_and = chw::split(*iter_or,"&&");
+        int index=0;
+        auto iter_and = msg_and.begin();
+        while(iter_and != msg_and.end())
+        {
+            chw::FilterCond tcond;
+            tcond.desc = *iter_and;
+            if(index == 0)
+            {
+                tcond.ao = chw::_or;
+            }
+            else
+            {
+                tcond.ao = chw::_and;
+            }
+            conds.push_back(tcond);
+            index++;
+            iter_and++;
+        }
+        iter_or++;
     }
 
-    if (val_root.is<picojson::object>())
+    //2.解析比较运算符
+    auto iter_cond = conds.begin();
+    while(iter_cond != conds.end())
     {
-        //2.根据value获取object
-        //object 是类似map的键值对，使用迭代器遍历，根据key取值，key和值可打印出来
-        //例如<name,cond1>，<conds,[{"compare":"0800","desc":"ipv4","start":"13"},{"compare":"86dd","desc":"ipv6","start":"13"}]>
-        const picojson::object &obj_one = val_root.get<picojson::object>();
-
-        //3.从object获取字段的string
-        std::string cond_name = obj_one.at("name").get<std::string>();
-        PrintD("cond name=%s",cond_name.c_str());
-
-        //4.从object获取一个value
-        picojson::value val_array = obj_one.at("conds");
-        if (val_array.is<picojson::array>()) 
-        {
-            //5.value 转换为 array
-            const picojson::array &arr = val_array.get<picojson::array>();
-            int index = 0;
-            for (picojson::array::const_iterator i = arr.begin(); i != arr.end(); ++i) 
+        std::vector<std::string> list;
+        do {
+            list = chw::split(iter_cond->desc,"==");
+            if( list.size() == 2)
             {
-                chw::CondJson tCondJson;
-                //6.array 数组使用迭代遍历，每个元素转换为object解析
-                const picojson::object &obj_i = (*i).get<picojson::object>();
-                tCondJson.start = atoi(obj_i.at("start").get<std::string>().c_str());
-                std::string cmp = obj_i.at("compare").get<std::string>();
-                tCondJson.compare = chw::StrHex2StrBuf(cmp.c_str(),'*');
-                tCondJson.desc = obj_i.at("desc").get<std::string>();
-
-                PrintD("cond index=%d,start=%u,compare=%s,desc=%s",index, tCondJson.start, cmp.c_str(), tCondJson.desc.c_str());
-                index++;
-                g_vCondJson.push_back(tCondJson);
+                iter_cond->exp_front = list[0];
+                iter_cond->exp_back = list[1];
+                iter_cond->op = chw::_EQUAL;
+                break;
             }
+
+            list = chw::split(iter_cond->desc,">=");
+            if( list.size() == 2)
+            {
+                iter_cond->exp_front = list[0];
+                iter_cond->exp_back = list[1];
+                iter_cond->op = chw::_GREATER_EQUAL;
+                break;
+            }
+
+            list = chw::split(iter_cond->desc,">");
+            if( list.size() == 2)
+            {
+                iter_cond->exp_front = list[0];
+                iter_cond->exp_back = list[1];
+                iter_cond->op = chw::_GREATER;
+                break;
+            }
+
+            list = chw::split(iter_cond->desc,"<=");
+            if( list.size() == 2)
+            {
+                iter_cond->exp_front = list[0];
+                iter_cond->exp_back = list[1];
+                iter_cond->op = chw::_LESS_EQUAL;
+                break;
+            }
+
+            list = chw::split(iter_cond->desc,"<");
+            if( list.size() == 2)
+            {
+                iter_cond->exp_front = list[0];
+                iter_cond->exp_back = list[1];
+                iter_cond->op = chw::_LESS;
+                break;
+            }
+        } while(0);
+
+
+        if(list.size() == 2)
+        {
+            //3.解析单个条件表达式
+            ParseFrontExp(*iter_cond);
+            iter_cond++;
         }
+        else
+        {
+            PrintD("unknown operator,desc=%s.\n",iter_cond->desc.c_str());
+            iter_cond = conds.erase(iter_cond);
+        }
+    }
+
+}
+
+void FilterCondition::ParseFrontExp(chw::FilterCond& cond)
+{
+    if(cond.exp_front.size() < 2)
+    {
+        PrintD("Invalid para=%s\n",cond.exp_front.c_str());
+        return;
+    }
+
+    if(chw::start_with(cond.exp_front,"!") == true)
+    {
+        cond.non = true;
+        cond.exp_front.erase(cond.exp_front.begin());
+    }
+
+    std::vector<std::string> vFornt = chw::split(cond.exp_front,".");
+    if(vFornt[0] == "frame")
+    {
+        cond.potol = chw::_frame;
+    }
+    else if(vFornt[0] == "eth")
+    {
+        cond.potol = chw::_eth;
+    }
+    else if(vFornt[0] == "ip")
+    {
+        cond.potol = chw::_ip;
+    }
+    else if(vFornt[0] == "arp")
+    {
+        cond.potol = chw::_arp;
+    }
+    else if(vFornt[0] == "tcp")
+    {
+        cond.potol = chw::_tcp;
+    }
+    else if(vFornt[0] == "udp")
+    {
+        cond.potol = chw::_udp;
+    }
+    else
+    {
+        PrintD("Invalid para=%s\n",cond.exp_front.c_str());
+        return;
+    }
+
+    if(vFornt.size() > 1)
+    {
+        cond.value = vFornt[1];
     }
 }
