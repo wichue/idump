@@ -12,6 +12,7 @@
 #include "PcapParse.h"
 #include "JsonCondition.h"
 #include "SysInfo.h"
+#include "FilterCondition.h"
 
 //捕获ctrl+c
 void sigend_handler_abort(int sig)
@@ -62,31 +63,28 @@ int main(int argc, char **argv)
     }
     chw::Logger::Instance().setWriter(std::make_shared<chw::AsyncLogWriter>());
 
+	if(gConfigCmd.filter != nullptr)
+	{
+		FilterCondition fc;
+		fc.ParseFilter(gConfigCmd.filter);
+	}
+
     if(gConfigCmd.json != nullptr)
     {
-        JsonCondition fc;
-        fc.ParseJson(gConfigCmd.json);
+        JsonCondition jc;
+        jc.ParseJson(gConfigCmd.json);
     }
 
     if(gConfigCmd.file != nullptr)
     {
         PcapParse pp;
-        pp.parse(gConfigCmd.file);
+        pp.parse_file(gConfigCmd.file);
     }
     else
     {
         chw::CmdLineParse::Instance().printf_help();
     }
 
-    uint64_t total = 0;
-    uint64_t free = 0;
-    chw::CptDisk(total,free);
-    PrintD("total=%lu,free=%lu",total,free);
-
-    uint64_t MemTotal = 0;
-    uint64_t MemAvailable = 0;
-    chw::CptMemory(MemTotal,MemAvailable);
-    PrintD("MemTotal=%lu,MemAvailable=%lu",MemTotal,MemAvailable);
 
     chw::SignalCatch::Instance().CustomAbort(SIG_DFL);
     chw::SignalCatch::Instance().CustomCrash(SIG_DFL);

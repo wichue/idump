@@ -125,6 +125,49 @@ struct tcphdr {
 	uint16_t	urg_ptr;//  这个域被用来指示紧急数据在当前数据段中的为止，它是一个相当于当前序列号的字节偏移量。这个设置可以代替中断信息。
 };
 
+typedef enum {
+    IPV4 = 4,
+    IPV6 = 6,
+    IP_NULL
+} _IPTYPE_;
+
+typedef enum {
+    tcp_trans,
+    udp_trans,
+    null_trans
+} _TRANSPORT_;
+
+// 解析一条pcap帧获得的信息
+struct ayz_info {
+	pcap_pkthdr* pcap;//frame包头
+	ethhdr* eth;//以太头
+
+	uint8_t ipver;//ip协议类型
+	union {
+		iphdr* ip4;
+		IP6Hdr* ip6;
+	};
+
+    uint8_t transport;//传输层类型
+	union {
+		tcphdr* tcp;
+		udphdr* udp;
+	};
+
+    ayz_info()
+    {
+        pcap = nullptr;
+        eth = nullptr;
+        ip4 = nullptr;
+        ip6 = nullptr;
+        tcp = nullptr;
+        udp = nullptr;
+
+        ipver = IP_NULL;
+        transport = null_trans;
+    }
+};
+
 #pragma pack()
 
 enum chw_ret{
@@ -167,7 +210,8 @@ struct CondJson
 // 条件表达式之间的关系运算符
 enum and_or {
     _and,// &&
-    _or  // ||
+    _or, // ||
+	_null // no pre
 };
 
 // 条件表达式的关系运算符
@@ -191,7 +235,8 @@ enum _protocol {
 
 // frame的条件选项
 enum frame_option {
-
+	frame_len,
+	frame_cap_len
 };
 
 // eth的条件选项
@@ -249,18 +294,25 @@ enum udp_option {
 
 
 // 条件表达式
+//demo:
+//tcp.dstport == 80	# desc
+//==				# op
+//tcp.dstport		# exp_front
+//80 				# exp_back
+//tcp 				# protol
+//dstport 			# po_value
 struct FilterCond {
     bool bValid = false;// 是否有效的条件
-    and_or ao;// 与下一个FilterCond是 && 还是 || 关系
-    std::string desc;// 来自命令行的原始条件
+    and_or ao;// 与上一个FilterCond是 && 还是 || 关系
+
+    std::string desc;// 来自命令行的原始条件表达式
     _operator op;// 比较运算符
     std::string exp_front;// 比较运算符前面的表达式
     std::string exp_back;// 比较运算符后面的表达式
-    
     bool non = false;// 最前面是否包含 ! 运算符，最多只能有一个!运算符，不像wireshark可以嵌套多个
 
     _protocol potol;// 协议类型
-    std::string value;// 协议的参数选项
+    uint16_t option_val;// 协议的参数选项
 };
 
 

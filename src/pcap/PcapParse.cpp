@@ -13,7 +13,7 @@
 #include "MemoryHandle.h"
 #include "GlobalValue.h"
 
-void PcapParse::parse(const char* filename)
+void PcapParse::parse_file(const char* filename)
 {
     struct stat st;
     if (stat(filename, &st))
@@ -65,10 +65,18 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
     mPackIndex = 0;
     while (offset < fileSize)
     {
+        if(fileSize - offset < sizeof(chw::pcap_pkthdr))
+        {
+            PrintD("error pcap_pkthdr len, unexpected fileSize=%lu,offset=%lu", fileSize, offset);
+            break;
+        }
+
+        chw::ayz_info ayz;
         // pcap 包头
         chw::pcap_pkthdr* pcapHeader = (chw::pcap_pkthdr*)(buf + offset);
         proto_offset = offset + sizeof(chw::pcap_pkthdr);
-
+        ayz.pcap = pcapHeader;
+        
         offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
         mPackIndex++;
 
@@ -78,10 +86,11 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         {
             continue;
         }
-        
+
         // 以太头
         chw::ethhdr* ethHeader = (chw::ethhdr*)(buf + proto_offset);
         uint16_t protocol = ntohs(ethHeader->h_proto);
+        ayz.eth = ethHeader;
 
         // 协议类型，如果是ipv4或ipv6，且是已知的tcp/udp等传输层协议，则显示传输层协议，如果是未知的则显示16进制值
         std::string str_Protocol = chw::HexBuftoString((const unsigned char*)&ethHeader->h_proto,2);//0800,86dd
@@ -91,21 +100,43 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         std::string str_Source = chw::MacBuftoStr((const unsigned char*)(ethHeader->h_source));
 
         // ip 协议
+		uint32_t match_ret = chw::fail; 
         switch(protocol)
         {
             case 0x0800:
                 str_Protocol = "ipv4";
-                Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source);
+                ayz.ipver = chw::IPV4;
+                match_ret = Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source);
                 break;
             case 0x86dd:
                 str_Protocol = "ipv6";
-                Ipv6Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source);
-            break;
+                ayz.ipver = chw::IPV6;
+                match_ret = Ipv6Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source);
+    	        break;
+			case 0x0806:
+				str_Protocol = "ARP";
+				break;
+			case 0x8864:
+				str_Protocol = "PPPoE";
+				break;
+			case 0x8847:
+				str_Protocol = "MPLS-TP";
+				break;
+			case 0x8848:
+				str_Protocol = "MPLS";
+				break;
+			case 0x8100:
+				str_Protocol = "802.1Q";
+				break;
 
             // 其他自定义协议
             default:
             break;
         }
+		if(match_ret == chw::fail)
+		{
+			continue;
+		}
 
 
         //输出日志
@@ -164,7 +195,7 @@ std::string PcapParse::match_json(char* buf, size_t size)
 }
 
 // ipv4 协议解析
-void PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& des, std::string& src)
+uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& des, std::string& src)
 {
     chw::iphdr* ipHeader = (chw::iphdr*)(buf);
 
@@ -183,20 +214,20 @@ void PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& des, 
     {
         case 17:// UDP协议
             pro = "udp";
-            UdpDecode(buf + head_len);
-            break;
+            return UdpDecode(buf + head_len);
         case 6: // TCP协议
             pro = "tcp";
-            TcpDecode(buf + head_len, toal_len - head_len);
-            break;
+            return TcpDecode(buf + head_len, toal_len - head_len);
         default:
             // 其他协议，待补充
             break;
     }
+
+	return chw::fail;
 }
 
 // ipv6 协议解析
-void PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& des, std::string& src)
+uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& des, std::string& src)
 {
     chw::IP6Hdr* ipHeader = (chw::IP6Hdr*)(buf);
 
@@ -210,23 +241,22 @@ void PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& des, 
     uint16_t head_len  = sizeof(chw::IP6Hdr);// ip头长度
 
     // todo:匹配ip过滤条件
-    
     switch (ipHeader->nexthdr)
     {
         case 17:// UDP协议
-            UdpDecode(buf + head_len);
-            break;
+            return UdpDecode(buf + head_len);
         case 6: // TCP协议
-            TcpDecode(buf + head_len, load_len);
-            break;
+            return TcpDecode(buf + head_len, load_len);
         default:
             // 其他协议，待补充
             break;
     }
+
+	return chw::fail;
 }
 
 // udp协议解析
-void PcapParse::UdpDecode(const char* buf)
+uint32_t PcapParse::UdpDecode(const char* buf)
 {
     chw::udphdr* udpHeader = (chw::udphdr*)(buf);
 
@@ -241,7 +271,7 @@ void PcapParse::UdpDecode(const char* buf)
 }
 
 // tcp协议解析
-void PcapParse::TcpDecode(const char* buf, uint16_t len)
+uint32_t PcapParse::TcpDecode(const char* buf, uint16_t len)
 {
     chw::tcphdr* tcpHeader = (chw::tcphdr*)(buf);
 
