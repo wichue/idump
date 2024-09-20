@@ -45,10 +45,37 @@ struct ethhdr {
 	uint16_t		h_proto;		/* packet type ID field	*/
 } __attribute__((packed));
 
+/*
+ *  * IPV4头，最小20字节
+ *  *
+ *  0      3 4     7 8            15 16    19                         31
+ *  +-------+-------+---------------+----------------------------------+
+ *  |VER(4b)|LEN(4b)|  TOS(8b)      |       TOTAL LEN(16bit)           |
+ *  +-------+-------+---------------+-----+----------------------------+ 4B
+ *  |       identifier 16bit        |FLAGS|      OFFSET (13bit)        |
+ *  +---------------+---------------+-----+----------------------------+ 8B
+ *  |    TTL 8bit   | protocol 8bit |     checksum 16bit			   |
+ *  +---------------+---------------+----------------------------------+ 12B
+ *  |                  32bit src IP									   |
+ *  +------------------------------------------------------------------+ 16B
+ *  |                  32bit dst IP									   |
+ *  +------------------------------------------------------------------+ 20B
+ *  \                  OPTION (if has)                                 /
+ *  /																   \
+ *  +------------------------------------------------------------------+
+ *  |																   |
+ *  |                     DATA...                                      |
+ *  +------------------------------------------------------------------+
+ *  */
 // ipv4头
 struct iphdr {
+#if defined(__LITTLE_ENDIAN)
 	uint8_t	ihl:4,//首部长度(4位),表示IP报文头部按32位字长（32位，4字节）计数的长度，也即报文头的长度等于IHL的值乘以4。
-		version:4;//版本(4位)
+			version:4;//版本(4位)
+#elif defined(__BIG_ENDIAN)
+	uint8_t	version:4;//版本(4位)
+			ihl:4,//首部长度(4位),表示IP报文头部按32位字长（32位，4字节）计数的长度，也即报文头的长度等于IHL的值乘以4。
+#endif
 	uint8_t	tos;// 服务类型字段(8位)
 	uint16_t	tot_len;//总长度字段(16位)是指整个IP数据报的长度
 	uint16_t	id;//总长度字段(16位)是指整个IP数据报的长度,
@@ -61,12 +88,43 @@ struct iphdr {
 	/*The options start here. */
 };
 
+/*  IPV6头，固定长度40字节
+ *
+ *  0      3 4     7 8   11 12    15 16                               31
+ *  +-------+-------+------+-------------------------------------------+
+ *  |ver(4b)|  TYPE(8bit)  |      stream  tag (20bit)                  |
+ *  +-------+--------------+--------+----------------+-----------------+ 4B
+ *  |    payload len (16bit)        |next head (8bit)|  jump limit (8b)|
+ *  +-------------------------------+----------------+-----------------+ 8B
+ *  |                   src IPV6 addr (128bit)                         |
+ *  +------------------------------------------------------------------+ 12B
+ *  |                     ..............							   |
+ *  +------------------------------------------------------------------+ 16B
+ *  |                     ..............  							   |
+ *  +------------------------------------------------------------------+ 20B
+ *  |                     ..............                               |
+ *  +------------------------------------------------------------------+ 24B
+ *  |                   dst IPV6 addr (128bit)                         |
+ *  +------------------------------------------------------------------+ 28B
+ *  |                     ..............                               |
+ *  +------------------------------------------------------------------+ 32B
+ *  |                     ..............                               |
+ *  +------------------------------------------------------------------+ 36B
+ *  |                     ..............                               |
+ *  +------------------------------------------------------------------+ 40B
+ *  */
 // ipv6头
 typedef struct _IP6Hdr
 {
+#if defined(__LITTLE_ENDIAN)
     uint32_t version:4;// ip版本，6
     uint32_t priority:8;// 通信优先级
     uint32_t flow_lbl:20;// 流标签，可用来标记报文的数据流类型，以便在网络层区分不同的报文。
+#elif defined(__BIG_ENDIAN)
+    uint32_t flow_lbl:20;// 流标签，可用来标记报文的数据流类型，以便在网络层区分不同的报文。
+    uint32_t priority:8;// 通信优先级
+    uint32_t version:4;// ip版本，6
+#endif
     uint16_t payload_len; // PayLoad Length 除了ipv6头部以外的负载长度(传输层+应用层长度)
     uint8_t nexthdr; // Next Header 可能是tcp/udp协议类型，也可能是IPv6扩展报头
     uint8_t hop_limit; // Hop Limit 跳数限制
@@ -83,6 +141,16 @@ typedef struct _IP6ExtenHdr
     uint32_t reserve32;
 }IP6ExtenHdr;
 
+/*
+ * udp头，长度固定8字节
+ *
+	0                       15 16                     31
+	+-------------------------+------------------------+
+	|     src Port 16bit      |   dst Port 16bit       |
+	+-------------------------+------------------------+
+	|     data len 16bit      |   checksum 16bit       |
+	+-------------------------+------------------------+
+*/
 struct udphdr {
 	uint16_t	source;//源端口号
 	uint16_t	dest;//目的端口号
@@ -90,12 +158,34 @@ struct udphdr {
 	uint16_t	check;//检测UDP数据(包含头部和数据部分)报在传输中是否有错，有错则丢弃
 };
 
+/*tcp头，最小20字节
+ *
+   0                   1                   2                   3   
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Source Port(16bit)   |       Destination Port(16bit) |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Sequence Number(32bit)                 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Acknowledgment Number(32bit)               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Data |           |U|A|P|R|S|F|                               |
+   | Offset| Reserved  |R|C|S|S|Y|I|            Window(16bit)      |
+   |  4bit |  16bit    |G|K|H|T|N|N|                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Checksum 16bit      |         Urgent Pointer 16bit  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Options                    |    Padding    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                             data                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
 struct tcphdr {
 	uint16_t	source;//16位源端口
 	uint16_t	dest;//16位目的端口
 	uint32_t	seq;//序列号
 	uint32_t	ack_seq;//确认号
-// #if defined(__LITTLE_ENDIAN_BITFIELD)
+#if defined(__LITTLE_ENDIAN)
 	uint16_t	res1:4,// 保留位
 		doff:4,//TCP头长度，指明了TCP头部包含了多少个32位的字
 		fin:1,//释放一个连接，它表示发送方已经没有数据要传输了。
@@ -106,20 +196,18 @@ struct tcphdr {
 		urg:1,//紧急指针有效
 		ece:1,
 		cwr:1;
-// #elif defined(__BIG_ENDIAN_BITFIELD)
-// 	__u16	doff:4,
-// 		res1:4,
-// 		cwr:1,
-// 		ece:1,
-// 		urg:1,
-// 		ack:1,
-// 		psh:1,
-// 		rst:1,
-// 		syn:1,
-// 		fin:1;
-// #else
-// #error	"Adjust your <asm/byteorder.h> defines"
-// #endif	
+#elif defined(__BIG_ENDIAN)
+ 	__u16	doff:4,
+ 		res1:4,
+ 		cwr:1,
+ 		ece:1,
+ 		urg:1,
+ 		ack:1,
+ 		psh:1,
+ 		rst:1,
+ 		syn:1,
+ 		fin:1;
+#endif	
 	uint16_t	window;//16位滑动窗口大小，单位为字节，起始于确认序号字段指明的值，这个值是接收端期望接收的字节数，其最大值为63353字节。
 	uint16_t	check;//校验和，覆盖了整个tcp报文端，是一个强制性的字段，一定是由发送端计算和存储，并由接收端进行验证。
 	uint16_t	urg_ptr;//  这个域被用来指示紧急数据在当前数据段中的为止，它是一个相当于当前序列号的字节偏移量。这个设置可以代替中断信息。
@@ -235,52 +323,52 @@ enum _protocol {
 
 // frame的条件选项
 enum frame_option {
-	frame_len,
-	frame_cap_len
+	frame_len,      // 帧长度
+	frame_cap_len   // 捕获长度
 };
 
 // eth的条件选项
 enum eth_option {
-    eth_dst,
-    eth_src,
-    eth_type
+    eth_dst,    //目的MAC
+    eth_src,    //源MAC
+    eth_type    //协议类型
 };
 
 // ip的条件选项
 enum ip_option {
-    ip_hdr_len,
-    ip_version,
-    ip_tos,
-    ip_len,
-    ip_id,
-    ip_fragment,
-    ip_ttl,
-    ip_proto,
-    ip_checksum,
-    ip_saddr,
-    ip_daddr,
+    ip_hdr_len,     //ip头长度
+    ip_version,     //ip版本
+    ip_tos,         //服务类型
+    ip_len,         //ip头和负载的总长度
+    ip_id,          //
+    ip_fragment,    //分段偏移
+    ip_ttl,         //TTL
+    ip_proto,       //协议字段
+    ip_checksum,    //首部校验和字段
+    ip_saddr,       //32源IP地址
+    ip_daddr,       //32位目的IP地址
 };
 
 // tcp的条件选项
 enum tcp_option {
-    tcp_hdr_len,
-    tcp_srcport,
-    tcp_dstport,
-    tcp_seq,
-    tcp_ack,
+    tcp_hdr_len,    //tcp头长度
+    tcp_srcport,    //16位源端口
+    tcp_dstport,    //16位目的端口
+    tcp_seq,        //序列号
+    tcp_ack,        //确认号
 
-    tcp_fin,
-    tcp_syn,
-    tcp_reset,
+    tcp_fin,        //释放一个连接
+    tcp_syn,        //同步序号
+    tcp_reset,      //该位用于重置一个混乱的连接
     tcp_push,
-    tcp_ack_flag,
-    tcp_urg,
-    tcp_ece,
+    tcp_ack_flag,   //ack位被设置为1表示tcphdr->ack_seq是有效的，如果ack为0，则表示该数据段不包含确认信息
+    tcp_urg,        //紧急指针有效
+    tcp_ece,    
     tcp_cwr,
 
-    tcp_window_size,
-    tcp_checksum,
-    tcp_urgent_pointer
+    tcp_window_size,    //16位滑动窗口大小
+    tcp_checksum,       //校验和，覆盖了整个tcp报文端
+    tcp_urgent_pointer  //这个域被用来指示紧急数据在当前数据段中的为止
 };
 
 // udp的条件选项
@@ -305,14 +393,14 @@ struct FilterCond {
     bool bValid = false;// 是否有效的条件
     and_or ao;// 与上一个FilterCond是 && 还是 || 关系
 
-    std::string desc;// 来自命令行的原始条件表达式
-    _operator op;// 比较运算符
+    std::string desc;// 来自命令行的原始条件表达式    
     std::string exp_front;// 比较运算符前面的表达式
-    std::string exp_back;// 比较运算符后面的表达式
-    bool non = false;// 最前面是否包含 ! 运算符，最多只能有一个!运算符，不像wireshark可以嵌套多个
+    std::string exp_back;// 比较运算符后面的表达式，为空则没有后置表达式
 
-    _protocol potol;// 协议类型
-    uint16_t option_val;// 协议的参数选项
+    bool non = false;// 最前面是否包含 ! 运算符，最多只能有一个!运算符，不像wireshark可以嵌套多个
+    _operator op;// 比较运算符
+    _protocol potol;// 协议类型： /_frame/_eth/_ip/_arp/_tcp/_udp
+    uint16_t option_val;// 协议的选项参数： frame_option/eth_option/ip_option/tcp_option/udp_option
 };
 
 

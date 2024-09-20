@@ -90,7 +90,7 @@ void FilterCondition::ParseFilter(char* filter)
         } while(0);
 
 
-        if(list.size() == 2)
+        if(list.size() > 1)
         {
             //3.解析单个条件表达式
             ParseFrontExp(*iter_cond);

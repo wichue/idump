@@ -57,14 +57,23 @@ void PcapParse::parse_file(const char* filename)
     }
 }
 
+/**
+ * @brief pcap逐帧解析
+ * 
+ * @param fileSize  pcap文件总的字节长度
+ * @param offset    pcap头偏移
+ * @param buf       pcap文件buf
+ * @return uint32_t 
+ */
 uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf)
 {
     PrintD("No.     time                    Source                          Destination                     protocol  len     desc      ");
 
     size_t proto_offset = 0;//以太头偏移
-    mPackIndex = 0;
+    mPackIndex = 0;//抓包帧序号
     while (offset < fileSize)
     {
+		//1.解析pcap帧头
         if(fileSize - offset < sizeof(chw::pcap_pkthdr))
         {
             PrintD("error pcap_pkthdr len, unexpected fileSize=%lu,offset=%lu", fileSize, offset);
@@ -72,20 +81,32 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         }
 
         chw::ayz_info ayz;
-        // pcap 包头
+        // pcap头
         chw::pcap_pkthdr* pcapHeader = (chw::pcap_pkthdr*)(buf + offset);
         proto_offset = offset + sizeof(chw::pcap_pkthdr);
         ayz.pcap = pcapHeader;
         
-        offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
-        mPackIndex++;
-
-        //匹配json过滤条件
+		mPackIndex++;
+        //2.匹配json过滤条件
+        if(fileSize - offset - sizeof(chw::pcap_pkthdr) < pcapHeader->caplen)
+        {
+            PrintD("error caplen, unexpected fileSize=%lu,offset=%lu,caplen=%u", fileSize, offset,pcapHeader->caplen);
+            break;
+        }
         std::string desc = match_json(buf + proto_offset, pcapHeader->caplen);
         if(desc.size() == 0)
         {
             continue;
         }
+
+		//3.解析以太头
+		if(fileSize - offset - sizeof(chw::pcap_pkthdr) < sizeof(chw::ethhdr))
+		{
+			PrintD("error ethhdr len, unexpected fileSize=%lu,offset=%lu", fileSize, offset);
+			break;
+		}
+
+		offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
 
         // 以太头
         chw::ethhdr* ethHeader = (chw::ethhdr*)(buf + proto_offset);
@@ -100,18 +121,17 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         std::string str_Source = chw::MacBuftoStr((const unsigned char*)(ethHeader->h_source));
 
         // ip 协议
-		uint32_t match_ret = chw::fail; 
         switch(protocol)
         {
             case 0x0800:
                 str_Protocol = "ipv4";
                 ayz.ipver = chw::IPV4;
-                match_ret = Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source);
+                Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
                 break;
             case 0x86dd:
                 str_Protocol = "ipv6";
                 ayz.ipver = chw::IPV6;
-                match_ret = Ipv6Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source);
+                Ipv6Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
     	        break;
 			case 0x0806:
 				str_Protocol = "ARP";
@@ -133,10 +153,12 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
             default:
             break;
         }
-		if(match_ret == chw::fail)
-		{
-			continue;
-		}
+
+        //4.匹配命令行filter条件
+        if(match_filter(ayz) == chw::fail)
+        {
+            continue;
+        }
 
 
         //输出日志
@@ -158,9 +180,16 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
 
     PrintD("total package count:%d", mPackIndex);
 
-    return 0;
+    return chw::success;
 }
 
+/**
+ * @brief 对每一帧匹配JSON文件读取的条件
+ * 
+ * @param buf   帧buf
+ * @param size  帧长度
+ * @return std::string 匹配到的描述，没有匹配到则为空
+ */
 std::string PcapParse::match_json(char* buf, size_t size)
 {
     std::string desc = "";
@@ -193,11 +222,147 @@ std::string PcapParse::match_json(char* buf, size_t size)
 
     return desc;
 }
+/*
+// 条件表达式
+//demo:
+//tcp.dstport == 80	# desc
+//==				# op
+//tcp.dstport		# exp_front
+//80 				# exp_back
+//tcp 				# protol
+//dstport 			# po_value
+struct FilterCond {
+    bool bValid = false;// 是否有效的条件
+    and_or ao;// 与上一个FilterCond是 && 还是 || 关系
+
+    std::string desc;// 来自命令行的原始条件表达式
+    _operator op;// 比较运算符
+    std::string exp_front;// 比较运算符前面的表达式
+    std::string exp_back;// 比较运算符后面的表达式
+    bool non = false;// 最前面是否包含 ! 运算符，最多只能有一个!运算符，不像wireshark可以嵌套多个
+
+    _protocol potol;// 协议类型
+    uint16_t option_val;// 协议的参数选项
+};
+// 条件表达式的协议类型
+enum _protocol {
+    _frame, //frame
+    _eth,   //eth
+    _ip,    //ip
+    _arp,   //arp
+    _tcp,   //tcp
+    _udp,   //udp
+};*/
+uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
+{
+	for(size_t index=0;index<g_vCondFilter.size();index++)
+	{
+		if(g_vCondFilter[index].bValid == false)
+		{
+			continue;
+		}
+		uint32_t match_ret = chw::fail;
+		switch(g_vCondFilter[index].potol)
+		{
+		case chw::_frame:
+			match_ret = match_frame(ayz,g_vCondFilter[index]);
+			break;
+        case chw::_eth:
+			match_ret = match_eth(ayz,g_vCondFilter[index]);
+			break;
+		}
+
+
+	}
+}
+
+uint32_t CompareOpt(uint32_t ayz_len, uint32_t cond_len, chw::_operator op)
+{
+    switch(op)
+    {
+    case chw::_EQUAL:             // ==
+        return ayz_len == cond_len ? chw::success : chw::fail;
+    case chw::_GREATER:           // >
+        return ayz_len > cond_len ? chw::success : chw::fail;
+    case chw::_GREATER_EQUAL:     // >=
+        return ayz_len >= cond_len ? chw::success : chw::fail;
+    case chw::_LESS:              // <
+        return ayz_len < cond_len ? chw::success : chw::fail;
+    case chw::_LESS_EQUAL:        // <=
+        return ayz_len <= cond_len ? chw::success : chw::fail;
+
+        default:
+        break;
+    }
+
+    return chw::fail;
+}
+
+/**
+ * @brief 匹配frame条件
+ * 
+ * @param ayz   解析后的帧信息
+ * @param cond  过滤条件
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t PcapParse::match_frame(const chw::ayz_info& ayz, const chw::FilterCond& cond)
+{
+	if(ayz.pcap == nullptr)
+	{
+		return chw::fail;
+	}
+
+    //如果后置表达式为空，则返回成功，因为满足这是一个帧的条件，类似wireshark的判断
+    if(cond.exp_back.size() == 0)
+    {
+        return chw::success;
+    }
+
+	uint32_t len = 0;
+    try {
+		len = std::stoi(cond.exp_back.c_str());
+	} catch (std::exception& ex) {
+		PrintD("error: failed string to int,exp_back=%s",cond.exp_back.c_str());
+	}
+	switch(cond.option_val)
+	{
+	case chw::frame_len:
+        return CompareOpt(ayz.pcap->len, len, cond.op);
+	case chw::frame_cap_len:
+        return CompareOpt(ayz.pcap->caplen, len, cond.op);
+
+	default:
+		break;
+	}
+
+	return chw::fail;
+}
+
+uint32_t PcapParse::match_eth(const chw::ayz_info& ayz, const chw::FilterCond& cond)
+{
+	if(ayz.pcap == nullptr)
+	{
+		return chw::fail;
+	}
+
+    switch(cond.option_val)
+	{
+	case chw::eth_dst:
+	case chw::eth_src:
+    case chw::eth_type:
+
+	default:
+		break;
+	}
+
+	return chw::fail;
+}
 
 // ipv4 协议解析
-uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& des, std::string& src)
+uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz)
 {
     chw::iphdr* ipHeader = (chw::iphdr*)(buf);
+	ayz.ip4 = ipHeader;
 
     std::string srcIp = chw::sockaddr_ipv4(ipHeader->saddr);
     std::string dstIp = chw::sockaddr_ipv4(ipHeader->daddr);
@@ -214,10 +379,12 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& d
     {
         case 17:// UDP协议
             pro = "udp";
-            return UdpDecode(buf + head_len);
+		    ayz.udp = (chw::udphdr*)(buf + head_len);
+            return UdpDecode(buf + head_len, ayz);
         case 6: // TCP协议
             pro = "tcp";
-            return TcpDecode(buf + head_len, toal_len - head_len);
+    		ayz.tcp = (chw::tcphdr*)(buf + head_len);
+            return TcpDecode(buf + head_len, toal_len - head_len, ayz);
         default:
             // 其他协议，待补充
             break;
@@ -227,7 +394,7 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& d
 }
 
 // ipv6 协议解析
-uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& des, std::string& src)
+uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz)
 {
     chw::IP6Hdr* ipHeader = (chw::IP6Hdr*)(buf);
 
@@ -244,9 +411,13 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& d
     switch (ipHeader->nexthdr)
     {
         case 17:// UDP协议
-            return UdpDecode(buf + head_len);
+            pro = "udp";
+		    ayz.udp = (chw::udphdr*)(buf + head_len);
+            return UdpDecode(buf + head_len,ayz);
         case 6: // TCP协议
-            return TcpDecode(buf + head_len, load_len);
+            pro = "tcp";
+    		ayz.tcp = (chw::tcphdr*)(buf + head_len);
+            return TcpDecode(buf + head_len, load_len, ayz);
         default:
             // 其他协议，待补充
             break;
@@ -256,7 +427,7 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& d
 }
 
 // udp协议解析
-uint32_t PcapParse::UdpDecode(const char* buf)
+uint32_t PcapParse::UdpDecode(const char* buf, chw::ayz_info& ayz)
 {
     chw::udphdr* udpHeader = (chw::udphdr*)(buf);
 
@@ -271,7 +442,7 @@ uint32_t PcapParse::UdpDecode(const char* buf)
 }
 
 // tcp协议解析
-uint32_t PcapParse::TcpDecode(const char* buf, uint16_t len)
+uint32_t PcapParse::TcpDecode(const char* buf, uint16_t len, chw::ayz_info& ayz)
 {
     chw::tcphdr* tcpHeader = (chw::tcphdr*)(buf);
 
