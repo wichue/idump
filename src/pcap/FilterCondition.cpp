@@ -4,6 +4,7 @@
 #include "util.h"
 #include "Logger.h"
 #include "GlobalValue.h"
+#include "MemoryHandle.h"
 
 void FilterCondition::ParseFilter(char* filter)
 {
@@ -90,11 +91,17 @@ void FilterCondition::ParseFilter(char* filter)
         } while(0);
 
 
-        if(list.size() > 1)
+        if(list.size() > 0)
         {
             //3.解析单个条件表达式
-            ParseFrontExp(*iter_cond);
-            iter_cond++;
+            if(ParseFrontExp(*iter_cond) == chw::success)
+			{
+				iter_cond++;
+			}
+			else
+			{
+				iter_cond = g_vCondFilter.erase(iter_cond);
+			}
         }
         else
         {
@@ -105,17 +112,98 @@ void FilterCondition::ParseFilter(char* filter)
 
 }
 
+uint32_t FilterCondition::exp_back2int(chw::FilterCond& cond)
+{
+	if(cond.exp_back.size() > 0)
+	{
+		try {
+			cond.int_comm = std::stoi(cond.exp_back);
+		} catch (const std::exception& ex) {
+			PrintD("error: failed string to int,exp_back=%s",cond.exp_back.c_str());
+			return chw::fail;
+		}
+	}
+
+	return chw::success;
+}
+
 /**
- * @brief 解析比较运算符前面的表达式
+ * @brief ipv4地址转换为32位网络字节序
  * 
- * @param cond 
+ * @param cond 条件表达式
+ * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
  */
-void FilterCondition::ParseFrontExp(chw::FilterCond& cond)
+uint32_t FilterCondition::exp_back2ipv4(chw::FilterCond& cond)
+{
+	if(cond.exp_back.size() > 0)
+	{
+		_SET_MEM_(&cond.ipv4,sizeof(struct in_addr),0,sizeof(struct in_addr));
+		if(chw::host2addr_ipv4(cond.exp_back.c_str(), cond.ipv4) == 1)
+		{
+			return chw::success;
+		}
+		else
+		{
+			return chw::fail;
+		}
+	}
+
+	return chw::success;
+}
+
+/**
+ * @brief ipv6地址转换为128位网络字节序
+ * 
+ * @param cond 条件表达式
+ * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
+ */
+uint32_t FilterCondition::exp_back2ipv6(chw::FilterCond& cond)
+{
+	if(cond.exp_back.size() > 0)
+	{
+		_SET_MEM_(&cond.ipv6,sizeof(struct in6_addr),0,sizeof(struct in6_addr));
+		if(chw::host2addr_ipv6(cond.exp_back.c_str(), cond.ipv6) == 1)
+		{
+			return chw::success;
+		}
+		else
+		{
+			return chw::fail;
+		}
+	}
+
+	return chw::success;
+}
+
+/**
+ * @brief mac地址转换为6字节数组
+ * 
+ * @param cond 条件表达式
+ * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
+ */
+uint32_t FilterCondition::exp_back2mac(chw::FilterCond& cond)
+{
+	if(cond.exp_back.size() > 0)
+	{
+		_SET_MEM_(cond.mac,sizeof(cond.mac),0,sizeof(cond.mac));
+		return chw::StrtoMacBuf(cond.exp_back.c_str(),cond.mac);
+	}
+
+	return chw::success;
+}
+
+/**
+ * @brief 解析比较运算符前面的表达式,获取 potol 和 option_val
+ * 
+ * @param cond [in][out]条件表达式
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 {
     if(cond.exp_front.size() < 2)
     {
         PrintD("Invalid para=%s",cond.exp_front.c_str());
-        return;
+        return chw::fail;
     }
 
     if(chw::start_with(cond.exp_front,"!") == true)
@@ -152,7 +240,7 @@ void FilterCondition::ParseFrontExp(chw::FilterCond& cond)
     else
     {
         PrintD("Invalid exp_front=%s",cond.exp_front.c_str());
-        return;
+        return chw::fail;
     }
 
     if(vFornt.size() > 1)
@@ -171,79 +259,94 @@ void FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else
 			{
         		PrintD("Invalid option_val=%s,exp_front=%s", vFornt[1].c_str(),cond.exp_front.c_str());
-				return;
+				return chw::fail;
 			}
-			break;
+			return exp_back2int(cond);
 		case chw::_eth :
 			if(vFornt[1] == "dst")
 			{
 				cond.option_val = chw::eth_dst;
+				return exp_back2mac(cond);
 			}
 			else if(vFornt[1] == "src")
 			{
 				cond.option_val = chw::eth_src;
+				return exp_back2mac(cond);
 			}
 			else if(vFornt[1] == "type")
 			{
 				cond.option_val = chw::eth_type;
+				return exp_back2int(cond);
 			}
 			else
 			{
         		PrintD("Invalid option_val=%s,exp_front=%s", vFornt[1].c_str(),cond.exp_front.c_str());
-				return;
+				return chw::fail;
 			}
 			break;
 		case chw::_ip:
 			if(vFornt[1] == "hdr_len")
 			{
 				cond.option_val = chw::ip_hdr_len;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "version")
 			{
 				cond.option_val = chw::ip_version;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "tos")
 			{
 				cond.option_val = chw::ip_tos;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "len")
 			{
 				cond.option_val = chw::ip_len;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "id")
 			{
 				cond.option_val = chw::ip_id;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "fragment")
 			{
 				cond.option_val = chw::ip_fragment;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "ttl")
 			{
 				cond.option_val = chw::ip_ttl;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "proto")
 			{
 				cond.option_val = chw::ip_proto;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "checksum")
 			{
 				cond.option_val = chw::ip_checksum;
+				return exp_back2int(cond);
 			}
 			else if(vFornt[1] == "saddr")
 			{
 				cond.option_val = chw::ip_saddr;
+				return exp_back2ipv4(cond);
 			}
 			else if(vFornt[1] == "daddr")
 			{
 				cond.option_val = chw::ip_daddr;
+				return exp_back2ipv4(cond);
 			}
 			else
 			{
         		PrintD("Invalid option_val=%s,exp_front=%s", vFornt[1].c_str(),cond.exp_front.c_str());
-				return;
+				return chw::fail;
 			}
 			break;
+			//todo:ipv6
 		case chw::_tcp:
 			if(vFornt[1] == "hdr_len")
 			{
@@ -312,8 +415,9 @@ void FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else
 			{
         		PrintD("Invalid option_val=%s,exp_front=%s", vFornt[1].c_str(),cond.exp_front.c_str());
-				return;
+				return chw::fail;
 			}
+			return exp_back2int(cond);
 			break;
 		case chw::_udp:
 			if(vFornt[1] == "srcport")
@@ -335,13 +439,16 @@ void FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else
 			{
         		PrintD("Invalid option_val=%s,exp_front=%s", vFornt[1].c_str(),cond.exp_front.c_str());
-				return;
+				return chw::fail;
 			}
+			return exp_back2int(cond);
 			break;
 
 		default:
         		PrintD("Invalid protol=%d,exp_front=%s", cond.potol,cond.exp_front.c_str());
-			break;
+				return chw::fail;
 		}
     }
+
+	return chw::success;
 }

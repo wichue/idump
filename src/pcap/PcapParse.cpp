@@ -18,7 +18,7 @@ void PcapParse::parse_file(const char* filename)
     struct stat st;
     if (stat(filename, &st))
     {
-        printf("stat file %s failed, errno=%d errmsg=%s\n", filename, errno, strerror(errno));
+        PrintD("stat file %s failed, errno=%d errmsg=%s\n", filename, errno, strerror(errno));
         return;
     }
 
@@ -26,7 +26,7 @@ void PcapParse::parse_file(const char* filename)
 
     if (!fileSize)
     {
-        printf("file is empty!\n");
+        PrintD("file is empty!\n");
         return;
     }
 
@@ -35,7 +35,7 @@ void PcapParse::parse_file(const char* filename)
     FILE* fp = fopen(filename, "r");
     if (!fp)
     {
-        printf("open file %s failed, errno=%d errmsg=%s\n", filename, errno, strerror(errno));
+        PrintD("open file %s failed, errno=%d errmsg=%s\n", filename, errno, strerror(errno));
         return;
     }
     fread(buf, sizeof(char), fileSize, fp);
@@ -61,7 +61,7 @@ void PcapParse::parse_file(const char* filename)
  * @brief pcap逐帧解析
  * 
  * @param fileSize  pcap文件总的字节长度
- * @param offset    pcap头偏移
+ * @param offset    pcap偏移
  * @param buf       pcap文件buf
  * @return uint32_t 
  */
@@ -79,6 +79,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
             PrintD("error pcap_pkthdr len, unexpected fileSize=%lu,offset=%lu", fileSize, offset);
             break;
         }
+        mPackIndex++;
 
         chw::ayz_info ayz;
         // pcap头
@@ -86,7 +87,6 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         proto_offset = offset + sizeof(chw::pcap_pkthdr);
         ayz.pcap = pcapHeader;
         
-		mPackIndex++;
         //2.匹配json过滤条件
         if(fileSize - offset - sizeof(chw::pcap_pkthdr) < pcapHeader->caplen)
         {
@@ -105,7 +105,6 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
 			PrintD("error ethhdr len, unexpected fileSize=%lu,offset=%lu", fileSize, offset);
 			break;
 		}
-
 		offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
 
         // 以太头
@@ -126,12 +125,12 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
             case 0x0800:
                 str_Protocol = "ipv4";
                 ayz.ipver = chw::IPV4;
-                Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
+                Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), pcapHeader->caplen - sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
                 break;
             case 0x86dd:
                 str_Protocol = "ipv6";
                 ayz.ipver = chw::IPV6;
-                Ipv6Decode(buf + proto_offset + sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
+                Ipv6Decode(buf + proto_offset + sizeof(chw::ethhdr), pcapHeader->caplen - sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
     	        break;
 			case 0x0806:
 				str_Protocol = "ARP";
@@ -276,6 +275,13 @@ uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
 	}
 }
 
+/**
+ * @brief 计算条件表达式的值
+ * 
+ * @param ayz_len   解析pcap得到的长度
+ * @param cond_len  匹配条件的长度
+ * @return uint32_t 匹配成功返回chw::success,失败返回chw::fail
+ */
 uint32_t CompareOpt(uint32_t ayz_len, uint32_t cond_len, chw::_operator op)
 {
     switch(op)
@@ -340,7 +346,7 @@ uint32_t PcapParse::match_frame(const chw::ayz_info& ayz, const chw::FilterCond&
 
 uint32_t PcapParse::match_eth(const chw::ayz_info& ayz, const chw::FilterCond& cond)
 {
-	if(ayz.pcap == nullptr)
+	if(ayz.eth == nullptr)
 	{
 		return chw::fail;
 	}
@@ -358,10 +364,26 @@ uint32_t PcapParse::match_eth(const chw::ayz_info& ayz, const chw::FilterCond& c
 	return chw::fail;
 }
 
-// ipv4 协议解析
-uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz)
+/**
+ * @brief 解析IPV4
+ * 
+ * @param buf [in]IP头开始的buf
+ * @param caplen [in]pcap捕获长度 - 以太头长度，理论上IP头和负载的总长度
+ * @param pro [out]协议类型，用于输出到日志
+ * @param des [out]目的地址，用于输出到日志
+ * @param src [out]源地址，用于输出到日志
+ * @param ayz [out]解析的信息
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t PcapParse::Ipv4Decode(const char* buf, uint32_t caplen, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz)
 {
-    chw::iphdr* ipHeader = (chw::iphdr*)(buf);
+    //1.捕获长度小于最小ip头长度
+    if(caplen < sizeof(chw::ip4hdr))
+    {
+        PrintD("error: ip4 caplen too small, caplen=%lu", caplen);
+        return chw::fail;
+    }
+    chw::ip4hdr* ipHeader = (chw::ip4hdr*)(buf);
 	ayz.ip4 = ipHeader;
 
     std::string srcIp = chw::sockaddr_ipv4(ipHeader->saddr);
@@ -372,18 +394,33 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& d
 
     uint16_t toal_len = ntohs(ipHeader->tot_len);// IP头+后面负载总长度
     uint16_t head_len  = ipHeader->ihl * 4;// ip头长度
+    //2.错误的头长度
+    if(head_len > toal_len)
+    {
+        PrintD("error: ip4 head_len=%lu,toal_len=%lu",head_len, toal_len);
+        return chw::fail;
+    }
 
-    // todo:匹配ip过滤条件
-    
+    //3.捕获长度小于ip头解析的总长度
+    if(caplen < toal_len)
+    {
+        PrintD("error: Incomplete ip4 package, caplen=%lu,toal_len=%lu", caplen, toal_len);
+        return chw::fail;
+    }
+
+    //4.捕获长度大于ip头解析的总长度，继续解析
+    if(caplen > toal_len)
+    {
+        PrintD("warn: too big ip4 caplen=%lu,toal_len=%lu", caplen, toal_len);
+    }
+
     switch (ipHeader->protocol)
     {
         case 17:// UDP协议
             pro = "udp";
-		    ayz.udp = (chw::udphdr*)(buf + head_len);
-            return UdpDecode(buf + head_len, ayz);
+            return UdpDecode(buf + head_len, toal_len - head_len, ayz);
         case 6: // TCP协议
             pro = "tcp";
-    		ayz.tcp = (chw::tcphdr*)(buf + head_len);
             return TcpDecode(buf + head_len, toal_len - head_len, ayz);
         default:
             // 其他协议，待补充
@@ -393,10 +430,27 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, std::string& pro, std::string& d
 	return chw::fail;
 }
 
-// ipv6 协议解析
-uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz)
+/**
+ * @brief 解析IPV6
+ * 
+ * @param buf [in]IP头开始的buf
+ * @param caplen [in]pcap捕获长度 - 以太头长度，理论上IP头和负载的总长度
+ * @param pro [out]协议类型，用于输出到日志
+ * @param des [out]目的地址，用于输出到日志
+ * @param src [out]源地址，用于输出到日志
+ * @param ayz [out]解析的信息
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t PcapParse::Ipv6Decode(const char* buf, uint32_t caplen, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz)
 {
-    chw::IP6Hdr* ipHeader = (chw::IP6Hdr*)(buf);
+    //1.捕获长度小于最小ip头长度
+    if(caplen < sizeof(chw::ip6hdr))
+    {
+        PrintD("error: ip6 caplen too small, caplen=%lu", caplen);
+        return chw::fail;
+    }
+
+    chw::ip6hdr* ipHeader = (chw::ip6hdr*)(buf);
 
     std::string srcIp = chw::sockaddr_ipv6(ipHeader->saddr);
     std::string dstIp = chw::sockaddr_ipv6(ipHeader->daddr);
@@ -405,18 +459,31 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& d
     dstIp.size() == 0 ? 0 :des = dstIp;
 
     uint16_t load_len = ntohs(ipHeader->payload_len);// 后面负载总长度
-    uint16_t head_len  = sizeof(chw::IP6Hdr);// ip头长度
+    uint16_t head_len  = sizeof(chw::ip6hdr);// ip头长度
+
+    uint16_t toal_len = load_len + head_len;
+
+    //2.捕获长度小于ip头解析的总长度
+    if(caplen < toal_len)
+    {
+        PrintD("error: Incomplete ip6 package, caplen=%lu,toal_len=%lu", caplen, toal_len);
+        return chw::fail;
+    }
+
+    //3.捕获长度大于ip头解析的总长度，继续解析
+    if(caplen > toal_len)
+    {
+        PrintD("warn: too big ip6 caplen=%lu,toal_len=%lu", caplen, toal_len);
+    }
 
     // todo:匹配ip过滤条件
     switch (ipHeader->nexthdr)
     {
         case 17:// UDP协议
             pro = "udp";
-		    ayz.udp = (chw::udphdr*)(buf + head_len);
-            return UdpDecode(buf + head_len,ayz);
+            return UdpDecode(buf + head_len, load_len, ayz);
         case 6: // TCP协议
             pro = "tcp";
-    		ayz.tcp = (chw::tcphdr*)(buf + head_len);
             return TcpDecode(buf + head_len, load_len, ayz);
         default:
             // 其他协议，待补充
@@ -426,30 +493,75 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, std::string& pro, std::string& d
 	return chw::fail;
 }
 
-// udp协议解析
-uint32_t PcapParse::UdpDecode(const char* buf, chw::ayz_info& ayz)
+/**
+ * @brief 解析udp
+ * 
+ * @param buf       [in]ip负载buf
+ * @param caplen    [in]ip负载，即udp头和udp负载总长度
+ * @param ayz       [out]解析的信息
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t PcapParse::UdpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz)
 {
-    chw::udphdr* udpHeader = (chw::udphdr*)(buf);
+    if(caplen < sizeof(chw::udphdr))
+    {
+        PrintD("error: too small udp caplen=%lu", caplen);
+        return chw::fail;
+    }
 
-    uint16_t srcPort = ntohs(udpHeader->source);
-    uint16_t dstPort = ntohs(udpHeader->dest);
-    // udp负载长度
-    uint16_t loadLen = ntohs(udpHeader->len) - sizeof(chw::udphdr);
+    ayz.transport = chw::udp_trans;
+	ayz.udp = (chw::udphdr*)(buf);
 
-    // todo:匹配udp过滤条件
+    // chw::udphdr* udpHeader = (chw::udphdr*)(buf);
+    if(ayz.udp->len != caplen)
+    {
+        PrintD("error: no match udp caplen=%lu,ayz udp len=%lu", caplen,ayz.udp->len);
+        return chw::fail;
+    }
 
-    // PrintD("udp srcPort=%d,dstPort=%d,loadLen=%u",srcPort,dstPort,loadLen);
+    // uint16_t srcPort = ntohs(udpHeader->source);
+    // uint16_t dstPort = ntohs(udpHeader->dest);
+    // // udp负载长度
+    // uint16_t loadLen = ntohs(udpHeader->len) - sizeof(chw::udphdr);
+
+    return chw::success;
 }
 
-// tcp协议解析
-uint32_t PcapParse::TcpDecode(const char* buf, uint16_t len, chw::ayz_info& ayz)
-{
-    chw::tcphdr* tcpHeader = (chw::tcphdr*)(buf);
 
-    uint16_t srcPort = ntohs(tcpHeader->source);
-    uint16_t dstPort = ntohs(tcpHeader->dest);
-    // tcp负载长度
-    uint16_t loadLen = len - tcpHeader->doff * 4;
+/**
+ * @brief 解析udp
+ * 
+ * @param buf       [in]ip负载buf
+ * @param caplen    [in]ip负载，即tcp头和tcp负载总长度
+ * @param ayz       [out]解析的信息
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t PcapParse::TcpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz)
+{
+    if(caplen < sizeof(chw::tcphdr))
+    {
+        PrintD("error: too small tcp caplen=%lu", caplen);
+        return chw::fail;
+    }
+
+    ayz.transport = chw::tcp_trans;
+    ayz.tcp = (chw::tcphdr*)(buf);
+
+    uint16_t head_len = ayz.tcp->doff * 4;
+    if(caplen < head_len)
+    {
+        PrintD("error: no match tcp caplen=%lu,head_len=%lu", caplen,head_len);
+        return chw::fail;
+    }
+
+    return chw::success;
+
+    // chw::tcphdr* tcpHeader = (chw::tcphdr*)(buf);
+
+    // uint16_t srcPort = ntohs(tcpHeader->source);
+    // uint16_t dstPort = ntohs(tcpHeader->dest);
+    // // tcp负载长度
+    // uint16_t loadLen = caplen - tcpHeader->doff * 4;
 
     // todo:匹配tcp过滤条件
 

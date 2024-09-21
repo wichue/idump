@@ -11,11 +11,17 @@ public:
     void ParseFilter(char* filter);
 private:
     /**
-     * @brief 解析比较运算符前面的表达式
+     * @brief 解析比较运算符前面的表达式,获取 potol 和 option_val
      * 
-     * @param cond 
+     * @param cond [in][out]条件表达式
+     * @return uint32_t 成功返回chw::success,失败返回chw::fail
      */
-    void ParseFrontExp(chw::FilterCond& cond);
+    uint32_t ParseFrontExp(chw::FilterCond& cond);
+
+    uint32_t exp_back2int(chw::FilterCond& cond);
+    uint32_t exp_back2ipv4(chw::FilterCond& cond);
+    uint32_t exp_back2ipv6(chw::FilterCond& cond);
+    uint32_t exp_back2mac(chw::FilterCond& cond);
 };
 
 

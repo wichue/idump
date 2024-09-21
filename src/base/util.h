@@ -3,6 +3,7 @@
 
 #include <memory>// for std::shared_ptr
 #include <vector>
+#include <netinet/in.h>// for in_addr in6_addr
 
 // 单例宏
 #define INSTANCE_IMP(class_name, ...) \
@@ -66,13 +67,54 @@ std::string sockaddr_ipv4(uint32_t addr);
 std::string sockaddr_ipv6(uint8_t* addr);
 
 /**
+ * @brief 点分ipv4地址转换为32位网络字节序
+ * 
+ * @param host  [in]点分ip地址
+ * @param addr  [out]32位ip地址
+ * @return int32_t 若成功则为1，若输入不是有效的表达式则为0，若出错则为-1
+ */
+int32_t host2addr_ipv4(const char* host, struct in_addr& addr);
+
+/**
+ * @brief :分ipv6地址转换为128位网络字节序
+ * 
+ * @param host  [in]:分ip地址
+ * @param addr  [out]32位ip地址
+ * @return int32_t 若成功则为1，若输入不是有效的表达式则为0，若出错则为-1
+ */
+int32_t host2addr_ipv6(const char* host, struct in6_addr& addr6);
+
+/**
  * @brief 内存mac地址转换为字符串
  * 
  * @param macAddress    mac地址buf
  * @return std::string  :分mac地址字符串
  */
 std::string MacBuftoStr(const unsigned char* mac_buf);
-void StrtoMacBuf(const char* charArray, unsigned char* macAddress);
+
+/**
+ * @brief :分mac地址字符串转换为6字节buf
+ * 
+ * @param charArray     [int]:分mac地址字符串
+ * @param macAddress    [out]6字节长度buf
+ */
+
+/**
+ * @brief :分mac地址字符串转换为6字节buf
+ * 
+ * @param charArray     [int]:分mac地址字符串
+ * @param macAddress    [out]6字节长度buf
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t StrtoMacBuf(const char* charArray, unsigned char* macAddress);
+
+/**
+ * @brief 判断字符串是否有效的mac地址
+ * 
+ * @param mac   [in]字符串
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t is_valid_mac_addr(const char* mac);
 
 //字符串是否以xx开头
 bool start_with(const std::string &str, const std::string &substr);

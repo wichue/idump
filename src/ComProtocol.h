@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <netinet/in.h>// for in_addr in6_addr
 
 namespace chw {
 
@@ -54,21 +55,21 @@ struct ethhdr {
  *  +-------+-------+---------------+-----+----------------------------+ 4B
  *  |       identifier 16bit        |FLAGS|      OFFSET (13bit)        |
  *  +---------------+---------------+-----+----------------------------+ 8B
- *  |    TTL 8bit   | protocol 8bit |     checksum 16bit			   |
+ *  |    TTL 8bit   | protocol 8bit |     checksum 16bit               |
  *  +---------------+---------------+----------------------------------+ 12B
- *  |                  32bit src IP									   |
+ *  |                  32bit src IP                                    |
  *  +------------------------------------------------------------------+ 16B
- *  |                  32bit dst IP									   |
+ *  |                  32bit dst IP                                    |
  *  +------------------------------------------------------------------+ 20B
  *  \                  OPTION (if has)                                 /
- *  /																   \
+ *  /                                                                  \
  *  +------------------------------------------------------------------+
- *  |																   |
+ *  |                                                                  |
  *  |                     DATA...                                      |
  *  +------------------------------------------------------------------+
  *  */
 // ipv4头
-struct iphdr {
+struct ip4hdr {
 #if defined(__LITTLE_ENDIAN)
 	uint8_t	ihl:4,//首部长度(4位),表示IP报文头部按32位字长（32位，4字节）计数的长度，也即报文头的长度等于IHL的值乘以4。
 			version:4;//版本(4位)
@@ -98,9 +99,9 @@ struct iphdr {
  *  +-------------------------------+----------------+-----------------+ 8B
  *  |                   src IPV6 addr (128bit)                         |
  *  +------------------------------------------------------------------+ 12B
- *  |                     ..............							   |
+ *  |                     ..............                               |
  *  +------------------------------------------------------------------+ 16B
- *  |                     ..............  							   |
+ *  |                     ..............                               |
  *  +------------------------------------------------------------------+ 20B
  *  |                     ..............                               |
  *  +------------------------------------------------------------------+ 24B
@@ -130,7 +131,7 @@ typedef struct _IP6Hdr
     uint8_t hop_limit; // Hop Limit 跳数限制
     uint8_t saddr[16];// 源IP地址
     uint8_t daddr[16];// 目的IP地址
-} IP6Hdr;
+} ip6hdr;
 
 // ipv6扩展头
 typedef struct _IP6ExtenHdr
@@ -232,8 +233,8 @@ struct ayz_info {
 
 	uint8_t ipver;//ip协议类型
 	union {
-		iphdr* ip4;
-		IP6Hdr* ip6;
+		ip4hdr* ip4;
+		ip6hdr* ip6;
 	};
 
     uint8_t transport;//传输层类型
@@ -315,7 +316,8 @@ enum _operator {
 enum _protocol {
     _frame, //frame
     _eth,   //eth
-    _ip,    //ip
+    _ip,    //ipv4
+    _ipv6,  //ipv6
     _arp,   //arp
     _tcp,   //tcp
     _udp,   //udp
@@ -396,11 +398,18 @@ struct FilterCond {
     std::string desc;// 来自命令行的原始条件表达式    
     std::string exp_front;// 比较运算符前面的表达式
     std::string exp_back;// 比较运算符后面的表达式，为空则没有后置表达式
+    //exp_back 后置表达式，根据 option_val 的不同进行转换
+    union {
+        struct in_addr ipv4;
+        struct in6_addr ipv6;
+        uint8_t mac[6];
+        uint32_t int_comm;//用于存储整型
+    };
 
     bool non = false;// 最前面是否包含 ! 运算符，最多只能有一个!运算符，不像wireshark可以嵌套多个
     _operator op;// 比较运算符
-    _protocol potol;// 协议类型： /_frame/_eth/_ip/_arp/_tcp/_udp
-    uint16_t option_val;// 协议的选项参数： frame_option/eth_option/ip_option/tcp_option/udp_option
+    _protocol potol;// 解析exp_front获得，协议类型： /_frame/_eth/_ip/_arp/_tcp/_udp
+    uint16_t option_val;// 解析exp_front获得，协议的选项参数： frame_option/eth_option/ip_option/tcp_option/udp_option
 };
 
 

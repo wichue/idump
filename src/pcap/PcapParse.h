@@ -16,7 +16,7 @@ private:
      * @brief pcap逐帧解析
      * 
      * @param fileSize  pcap文件总的字节长度
-     * @param offset    pcap头偏移
+     * @param offset    pcap偏移
      * @param buf       pcap文件buf
      * @return uint32_t 成功返回chw::success,失败返回chw::fail
      */
@@ -41,11 +41,52 @@ private:
      */
 	uint32_t match_frame(const chw::ayz_info& ayz, const chw::FilterCond& cond);
     uint32_t match_eth(const chw::ayz_info& ayz, const chw::FilterCond& cond);
-    uint32_t Ipv4Decode(const char* buf, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz);
-    uint32_t Ipv6Decode(const char* buf, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz);
 
-    uint32_t UdpDecode(const char* buf, chw::ayz_info& ayz);
-    uint32_t TcpDecode(const char* buf, uint16_t len, chw::ayz_info& ayz);
+    /**
+     * @brief 解析IPV4
+     * 
+     * @param buf [in]IP头开始的buf
+     * @param caplen [in]pcap捕获长度 - 以太头长度，理论上IP头和负载的总长度
+     * @param pro [out]协议类型，用于输出到日志
+     * @param des [out]目的地址，用于输出到日志
+     * @param src [out]源地址，用于输出到日志
+     * @param ayz [out]解析的信息
+     * @return uint32_t 成功返回chw::success,失败返回chw::fail
+     */
+    uint32_t Ipv4Decode(const char* buf, uint32_t len, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz);
+    
+    /**
+     * @brief 解析IPV6
+     * 
+     * @param buf [in]IP头开始的buf
+     * @param caplen [in]pcap捕获长度 - 以太头长度，理论上IP头和负载的总长度
+     * @param pro [out]协议类型，用于输出到日志
+     * @param des [out]目的地址，用于输出到日志
+     * @param src [out]源地址，用于输出到日志
+     * @param ayz [out]解析的信息
+     * @return uint32_t 成功返回chw::success,失败返回chw::fail
+     */
+    uint32_t Ipv6Decode(const char* buf, uint32_t caplen, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz);
+
+    /**
+     * @brief 解析udp
+     * 
+     * @param buf       [in]ip负载buf
+     * @param caplen    [in]ip负载，即udp头和udp负载总长度
+     * @param ayz       [out]解析的信息
+     * @return uint32_t 成功返回chw::success,失败返回chw::fail
+     */
+    uint32_t UdpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz);
+    
+    /**
+     * @brief 解析udp
+     * 
+     * @param buf       [in]ip负载buf
+     * @param caplen    [in]ip负载，即tcp头和tcp负载总长度
+     * @param ayz       [out]解析的信息
+     * @return uint32_t 成功返回chw::success,失败返回chw::fail
+     */
+    uint32_t TcpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz);
 private:
     uint32_t mPackIndex;
 };

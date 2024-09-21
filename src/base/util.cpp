@@ -11,6 +11,9 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <regex.h>
 
 #include "local_time.h"
 #include "Logger.h"
@@ -208,6 +211,16 @@ std::string sockaddr_ipv6(uint8_t* addr) {
     return "";
 }
 
+int32_t host2addr_ipv4(const char* host, struct in_addr& addr)
+{
+    return inet_pton(AF_INET, host, &addr);
+}
+
+int32_t host2addr_ipv6(const char* host, struct in6_addr& addr6)
+{
+    return inet_pton(AF_INET6, host, &addr6);
+}
+
 std::string MacBuftoStr(const unsigned char* mac_buf) {
     char str[32] = {0};
     sprintf(str, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -217,7 +230,12 @@ std::string MacBuftoStr(const unsigned char* mac_buf) {
     return str;
 }
 
-void StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
+uint32_t StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
+    if(is_valid_mac_addr(charArray) == chw::fail)
+    {
+        return chw::fail;
+    }
+
     std::istringstream iss(charArray);
     int value;
 
@@ -226,6 +244,42 @@ void StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
         macAddress[i] = static_cast<unsigned char>(value);
         iss.ignore(1, ':');
     }
+
+    return chw::success;
+}
+
+uint32_t is_valid_mac_addr(const char* mac) {
+    int status;
+    const char * pattern = "^([A-Fa-f0-9]{2}[-,:]){5}[A-Fa-f0-9]{2}$";
+    const int cflags = REG_EXTENDED | REG_NEWLINE;
+
+    char ebuf[128];
+    regmatch_t pmatch[1];
+    int nmatch = 10;
+    regex_t reg;
+
+
+    status = regcomp(&reg, pattern, cflags);//编译正则模式
+    if(status != 0) {
+        regerror(status, &reg, ebuf, sizeof(ebuf));
+        printf( "regcomp fail: %s , pattern '%s' \n",ebuf, pattern);
+        goto failed;
+    }
+
+    status = regexec(&reg, mac, nmatch, pmatch,0);//执行正则表达式和缓存的比较,
+    if(status != 0) {
+        regerror(status, &reg, ebuf, sizeof(ebuf));
+        printf( "regexec fail: %s , mac:\"%s\" \n", ebuf, mac);
+        goto failed;
+    }
+
+    printf("[%s] match success.\n", __FUNCTION__);
+    regfree(&reg);
+    return chw::success;
+
+failed:
+    regfree(&reg);
+    return chw::fail;
 }
 
 std::string exePath(bool isExe /*= true*/) {
