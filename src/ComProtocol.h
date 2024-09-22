@@ -336,7 +336,7 @@ enum eth_option {
     eth_type    //协议类型
 };
 
-// ip的条件选项
+// ipv4的条件选项
 enum ip_option {
     ip_hdr_len,     //ip头长度
     ip_version,     //ip版本
@@ -347,8 +347,18 @@ enum ip_option {
     ip_ttl,         //TTL
     ip_proto,       //协议字段
     ip_checksum,    //首部校验和字段
-    ip_saddr,       //32源IP地址
-    ip_daddr,       //32位目的IP地址
+    ip_src_host,       //32源IP地址
+    ip_dst_host,       //32位目的IP地址
+};
+
+// ipv6的条件选项
+enum ipv6_option {
+    ipv6_version,     //ip版本
+    ipv6_flow,         //流标签
+    ipv6_plen,         //除了ipv6头部以外的负载长度(传输层+应用层长度)
+    ipv6_nxt,          //Next Header 可能是tcp/udp协议类型，也可能是IPv6扩展报头
+    ipv6_src_host,     //源IP地址
+    ipv6_dst_host,     //目的IP地址
 };
 
 // tcp的条件选项
@@ -392,7 +402,7 @@ enum udp_option {
 //tcp 				# protol
 //dstport 			# po_value
 struct FilterCond {
-    bool bValid = false;// 是否有效的条件
+    // bool bValid = false;// 是否有效的条件
     and_or ao;// 与上一个FilterCond是 && 还是 || 关系
 
     std::string desc;// 来自命令行的原始条件表达式    

@@ -90,6 +90,10 @@ void FilterCondition::ParseFilter(char* filter)
             }
         } while(0);
 
+		if(list.size() == 1)
+		{
+			iter_cond->exp_front = list[0];
+		}
 
         if(list.size() > 0)
         {
@@ -154,7 +158,7 @@ uint32_t FilterCondition::exp_back2ipv4(chw::FilterCond& cond)
 /**
  * @brief ipv6地址转换为128位网络字节序
  * 
- * @param cond 条件表达式
+ * @param cond [in][out]条件表达式
  * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
  */
 uint32_t FilterCondition::exp_back2ipv6(chw::FilterCond& cond)
@@ -178,7 +182,7 @@ uint32_t FilterCondition::exp_back2ipv6(chw::FilterCond& cond)
 /**
  * @brief mac地址转换为6字节数组
  * 
- * @param cond 条件表达式
+ * @param cond [in][out]条件表达式
  * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
  */
 uint32_t FilterCondition::exp_back2mac(chw::FilterCond& cond)
@@ -193,7 +197,7 @@ uint32_t FilterCondition::exp_back2mac(chw::FilterCond& cond)
 }
 
 /**
- * @brief 解析比较运算符前面的表达式,获取 potol 和 option_val
+ * @brief 解析比较运算符前面的表达式 exp_front,获取 potol 和 option_val
  * 
  * @param cond [in][out]条件表达式
  * @return uint32_t 成功返回chw::success,失败返回chw::fail
@@ -224,6 +228,10 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
     else if(vFornt[0] == "ip")
     {
         cond.potol = chw::_ip;
+    }
+	else if(vFornt[0] == "ipv6")
+    {
+        cond.potol = chw::_ipv6;
     }
     else if(vFornt[0] == "arp")
     {
@@ -330,14 +338,14 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 				cond.option_val = chw::ip_checksum;
 				return exp_back2int(cond);
 			}
-			else if(vFornt[1] == "saddr")
+			else if(vFornt[1] == "src_host")
 			{
-				cond.option_val = chw::ip_saddr;
+				cond.option_val = chw::ip_src_host;
 				return exp_back2ipv4(cond);
 			}
-			else if(vFornt[1] == "daddr")
+			else if(vFornt[1] == "dst_host")
 			{
-				cond.option_val = chw::ip_daddr;
+				cond.option_val = chw::ip_dst_host;
 				return exp_back2ipv4(cond);
 			}
 			else
@@ -346,7 +354,43 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 				return chw::fail;
 			}
 			break;
-			//todo:ipv6
+		case chw::_ipv6:
+			if(vFornt[1] == "version")
+			{
+				cond.option_val = chw::ipv6_version;
+				return exp_back2int(cond);
+			}
+			else if(vFornt[1] == "flow")
+			{
+				cond.option_val = chw::ipv6_flow;
+				return exp_back2int(cond);
+			}
+			else if(vFornt[1] == "plen")
+			{
+				cond.option_val = chw::ipv6_plen;
+				return exp_back2int(cond);
+			}
+			else if(vFornt[1] == "nxt")
+			{
+				cond.option_val = chw::ipv6_nxt;
+				return exp_back2int(cond);
+			}
+			else if(vFornt[1] == "src_host")
+			{
+				cond.option_val = chw::ipv6_src_host;
+				return exp_back2ipv6(cond);
+			}
+			else if(vFornt[1] == "dst_host")
+			{
+				cond.option_val = chw::ipv6_dst_host;
+				return exp_back2ipv6(cond);
+			}
+			else
+			{
+        		PrintD("Invalid option_val=%s,exp_front=%s", vFornt[1].c_str(),cond.exp_front.c_str());
+				return chw::fail;
+			}
+			break;
 		case chw::_tcp:
 			if(vFornt[1] == "hdr_len")
 			{

@@ -41,6 +41,11 @@ private:
      */
 	uint32_t match_frame(const chw::ayz_info& ayz, const chw::FilterCond& cond);
     uint32_t match_eth(const chw::ayz_info& ayz, const chw::FilterCond& cond);
+    uint32_t match_ip(const chw::ayz_info& ayz, const chw::FilterCond& cond);
+    uint32_t match_ipv6(const chw::ayz_info& ayz, const chw::FilterCond& cond);
+    uint32_t match_arp(const chw::ayz_info& ayz, const chw::FilterCond& cond);
+    uint32_t match_tcp(const chw::ayz_info& ayz, const chw::FilterCond& cond);
+    uint32_t match_udp(const chw::ayz_info& ayz, const chw::FilterCond& cond);
 
     /**
      * @brief 解析IPV4

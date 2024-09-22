@@ -93,11 +93,17 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
             PrintD("error caplen, unexpected fileSize=%lu,offset=%lu,caplen=%u", fileSize, offset,pcapHeader->caplen);
             break;
         }
-        std::string desc = match_json(buf + proto_offset, pcapHeader->caplen);
-        if(desc.size() == 0)
+        std::string desc = "";
+        if(g_vCondJson.size() > 0)
         {
-            continue;
+            desc = match_json(buf + proto_offset, pcapHeader->caplen);
+            if(desc.size() == 0)
+            {
+                offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
+                continue;
+            }
         }
+
 
 		//3.解析以太头
 		if(fileSize - offset - sizeof(chw::pcap_pkthdr) < sizeof(chw::ethhdr))
@@ -125,7 +131,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
             case 0x0800:
                 str_Protocol = "ipv4";
                 ayz.ipver = chw::IPV4;
-                Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), pcapHeader->caplen - sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
+                Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), pcapHeader->caplen - (uint32_t)sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
                 break;
             case 0x86dd:
                 str_Protocol = "ipv6";
@@ -243,23 +249,17 @@ struct FilterCond {
     _protocol potol;// 协议类型
     uint16_t option_val;// 协议的参数选项
 };
-// 条件表达式的协议类型
-enum _protocol {
-    _frame, //frame
-    _eth,   //eth
-    _ip,    //ip
-    _arp,   //arp
-    _tcp,   //tcp
-    _udp,   //udp
 };*/
 uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
 {
+    if(g_vCondFilter.size() == 0)
+    {
+        return chw::success;
+    }
+
+    uint32_t last_match = chw::fail;
 	for(size_t index=0;index<g_vCondFilter.size();index++)
 	{
-		if(g_vCondFilter[index].bValid == false)
-		{
-			continue;
-		}
 		uint32_t match_ret = chw::fail;
 		switch(g_vCondFilter[index].potol)
 		{
@@ -269,10 +269,57 @@ uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
         case chw::_eth:
 			match_ret = match_eth(ayz,g_vCondFilter[index]);
 			break;
+        case chw::_ip:
+			match_ret = match_ip(ayz,g_vCondFilter[index]);
+			break;
+        case chw::_ipv6:
+			match_ret = match_ipv6(ayz,g_vCondFilter[index]);
+			break;
+        case chw::_arp:
+            match_ret = match_arp(ayz,g_vCondFilter[index]);
+            break;
+        case chw::_tcp:
+            match_ret = match_tcp(ayz,g_vCondFilter[index]);
+            break;
+        case chw::_udp:
+            match_ret = match_udp(ayz,g_vCondFilter[index]);
+            break;
+
+        default:
+            PrintD("error: unknown protocol = %d", g_vCondFilter[index].potol);
+            return chw::fail;
 		}
 
+        if(g_vCondFilter[index].non == true)
+        {
+            match_ret = !match_ret;
+        }
 
+        switch(g_vCondFilter[index].ao)
+        {
+            case chw::_and:
+            //前一个条件和当前条件有一个是false，则返回失败
+            if(last_match == chw::fail || match_ret == chw::fail)
+            {
+                return chw::fail;
+            }
+            break;
+            case chw::_or:
+            //前一个条件和当前条件都是false，则返回失败
+            if(last_match == chw::fail && match_ret == chw::fail)
+            {
+                return chw::fail;
+            }
+            break;
+            case chw::_null:
+
+            default:
+            break;
+        }
+        last_match = match_ret;
 	}
+
+    return chw::success;
 }
 
 /**
@@ -324,18 +371,12 @@ uint32_t PcapParse::match_frame(const chw::ayz_info& ayz, const chw::FilterCond&
         return chw::success;
     }
 
-	uint32_t len = 0;
-    try {
-		len = std::stoi(cond.exp_back.c_str());
-	} catch (std::exception& ex) {
-		PrintD("error: failed string to int,exp_back=%s",cond.exp_back.c_str());
-	}
 	switch(cond.option_val)
 	{
 	case chw::frame_len:
-        return CompareOpt(ayz.pcap->len, len, cond.op);
+        return CompareOpt(ayz.pcap->len, cond.int_comm, cond.op);
 	case chw::frame_cap_len:
-        return CompareOpt(ayz.pcap->caplen, len, cond.op);
+        return CompareOpt(ayz.pcap->caplen, cond.int_comm, cond.op);
 
 	default:
 		break;
@@ -351,11 +392,231 @@ uint32_t PcapParse::match_eth(const chw::ayz_info& ayz, const chw::FilterCond& c
 		return chw::fail;
 	}
 
+    if(cond.exp_back.size() == 0)
+    {
+        return chw::success;
+    }
+
     switch(cond.option_val)
 	{
 	case chw::eth_dst:
+        if(_CMP_MEM_(ayz.eth->h_dest,ETH_ALEN,cond.mac,ETH_ALEN) == 0)
+        {
+            return chw::success;
+        }
+        break;
 	case chw::eth_src:
+        if(_CMP_MEM_(ayz.eth->h_source,ETH_ALEN,cond.mac,ETH_ALEN) == 0)
+        {
+            return chw::success;
+        }
+        break;
     case chw::eth_type:
+        return CompareOpt(ayz.eth->h_proto, cond.int_comm, cond.op);
+
+	default:
+		break;
+	}
+
+	return chw::fail;
+}
+
+uint32_t PcapParse::match_ip(const chw::ayz_info& ayz, const chw::FilterCond& cond)
+{
+	if(ayz.ip4 == nullptr)
+	{
+		return chw::fail;
+	}
+
+    if(ayz.ipver != chw::IPV4)
+    {
+        return chw::fail;
+    }
+
+    if(cond.exp_back.size() == 0)
+    {
+        return chw::success;
+    }
+
+    switch(cond.option_val)
+	{
+	case chw::ip_hdr_len:
+        return CompareOpt(ayz.ip4->ihl * 4, cond.int_comm, cond.op);
+	case chw::ip_version:
+        return CompareOpt(ayz.ip4->version, cond.int_comm, cond.op);
+    case chw::ip_tos:
+        return CompareOpt(ayz.ip4->tos, cond.int_comm, cond.op);
+    case chw::ip_len:
+        return CompareOpt(ntohs(ayz.ip4->tot_len), cond.int_comm, cond.op);
+	case chw::ip_id:
+        return CompareOpt(ayz.ip4->id, cond.int_comm, cond.op);
+    case chw::ip_fragment:
+        return CompareOpt(ayz.ip4->frag_off, cond.int_comm, cond.op);
+	case chw::ip_ttl:
+        return CompareOpt(ayz.ip4->ttl, cond.int_comm, cond.op);
+    case chw::ip_proto:
+        return CompareOpt(ayz.ip4->protocol, cond.int_comm, cond.op);
+	case chw::ip_checksum:
+        return CompareOpt(ayz.ip4->check, cond.int_comm, cond.op);
+    case chw::ip_src_host:
+        if(ayz.ip4->saddr == cond.ipv4.s_addr)
+        {
+            return chw::success;
+        }
+        break;
+	case chw::ip_dst_host:
+        if(ayz.ip4->daddr == cond.ipv4.s_addr)
+        {
+            return chw::success;
+        }
+        break;
+
+	default:
+		break;
+	}
+
+	return chw::fail;
+}
+
+uint32_t PcapParse::match_ipv6(const chw::ayz_info& ayz, const chw::FilterCond& cond)
+{
+	if(ayz.ip6 == nullptr)
+	{
+		return chw::fail;
+	}
+
+    if(ayz.ipver != chw::IPV6)
+    {
+        return chw::fail;
+    }
+
+    if(cond.exp_back.size() == 0)
+    {
+        return chw::success;
+    }
+
+    switch(cond.option_val)
+	{
+	case chw::ip_version:
+        return CompareOpt(ayz.ip6->version, cond.int_comm, cond.op);
+    case chw::ip_tos:
+        return CompareOpt(ayz.ip6->flow_lbl, cond.int_comm, cond.op);
+    case chw::ip_len:
+        return CompareOpt(ntohs(ayz.ip6->payload_len), cond.int_comm, cond.op);
+	case chw::ip_id:
+        return CompareOpt(ayz.ip6->nexthdr, cond.int_comm, cond.op);
+    case chw::ip_src_host:
+        if(_CMP_MEM_(&ayz.ip6->saddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
+        {
+            return chw::success;
+        }
+        break;
+	case chw::ip_dst_host:
+        if(_CMP_MEM_(&ayz.ip6->daddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
+        {
+            return chw::success;
+        }
+        break;
+
+	default:
+		break;
+	}
+
+	return chw::fail;
+}
+
+uint32_t PcapParse::match_arp(const chw::ayz_info& ayz, const chw::FilterCond& cond)
+{
+    //todo
+    return chw::fail;
+}
+
+uint32_t PcapParse::match_tcp(const chw::ayz_info& ayz, const chw::FilterCond& cond)
+{
+	if(ayz.tcp == nullptr)
+	{
+		return chw::fail;
+	}
+
+    if(ayz.transport != chw::tcp_trans)
+    {
+        return chw::fail;
+    }
+
+    if(cond.exp_back.size() == 0)
+    {
+        return chw::success;
+    }
+
+    switch(cond.option_val)
+	{
+	case chw::tcp_hdr_len:
+        return CompareOpt(ayz.tcp->doff, cond.int_comm, cond.op);
+    case chw::tcp_srcport:
+        return CompareOpt(ntohs(ayz.tcp->source), cond.int_comm, cond.op);
+    case chw::tcp_dstport:
+        return CompareOpt(ntohs(ayz.tcp->dest), cond.int_comm, cond.op);
+    case chw::tcp_seq:
+        return CompareOpt(ayz.tcp->seq, cond.int_comm, cond.op);
+    case chw::tcp_ack:
+        return CompareOpt(ayz.tcp->ack_seq, cond.int_comm, cond.op);
+    case chw::tcp_fin:
+        return CompareOpt(ayz.tcp->fin, cond.int_comm, cond.op);
+    case chw::tcp_syn:
+        return CompareOpt(ayz.tcp->syn, cond.int_comm, cond.op);
+    case chw::tcp_reset:
+        return CompareOpt(ayz.tcp->rst, cond.int_comm, cond.op);
+    case chw::tcp_push:
+        return CompareOpt(ayz.tcp->psh, cond.int_comm, cond.op);
+    case chw::tcp_ack_flag:
+        return CompareOpt(ayz.tcp->ack, cond.int_comm, cond.op);
+    case chw::tcp_urg:
+        return CompareOpt(ayz.tcp->urg, cond.int_comm, cond.op);
+    case chw::tcp_ece:
+        return CompareOpt(ayz.tcp->ece, cond.int_comm, cond.op);
+    case chw::tcp_cwr:
+        return CompareOpt(ayz.tcp->cwr, cond.int_comm, cond.op);
+    case chw::tcp_window_size:
+        return CompareOpt(ayz.tcp->window, cond.int_comm, cond.op);
+    case chw::tcp_checksum:
+        return CompareOpt(ayz.tcp->check, cond.int_comm, cond.op);
+    case chw::tcp_urgent_pointer:
+        return CompareOpt(ayz.tcp->urg_ptr, cond.int_comm, cond.op);
+
+	default:
+		break;
+	}
+
+	return chw::fail;
+}
+
+uint32_t PcapParse::match_udp(const chw::ayz_info& ayz, const chw::FilterCond& cond)
+{
+    if(ayz.udp == nullptr)
+	{
+		return chw::fail;
+	}
+
+    if(ayz.transport != chw::udp_trans)
+    {
+        return chw::fail;
+    }
+
+    if(cond.exp_back.size() == 0)
+    {
+        return chw::success;
+    }
+
+    switch(cond.option_val)
+	{
+	case chw::udp_srcport:
+        return CompareOpt(ntohs(ayz.udp->source), cond.int_comm, cond.op);
+	case chw::udp_dstport:
+        return CompareOpt(ntohs(ayz.udp->dest), cond.int_comm, cond.op);
+    case chw::udp_length:
+        return CompareOpt(ayz.udp->len, cond.int_comm, cond.op);
+    case chw::udp_checksum:
+        return CompareOpt(ayz.udp->check, cond.int_comm, cond.op);
 
 	default:
 		break;
@@ -378,7 +639,7 @@ uint32_t PcapParse::match_eth(const chw::ayz_info& ayz, const chw::FilterCond& c
 uint32_t PcapParse::Ipv4Decode(const char* buf, uint32_t caplen, std::string& pro, std::string& des, std::string& src, chw::ayz_info& ayz)
 {
     //1.捕获长度小于最小ip头长度
-    if(caplen < sizeof(chw::ip4hdr))
+    if(caplen < (uint32_t)sizeof(chw::ip4hdr))
     {
         PrintD("error: ip4 caplen too small, caplen=%lu", caplen);
         return chw::fail;
@@ -404,14 +665,15 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, uint32_t caplen, std::string& pr
     //3.捕获长度小于ip头解析的总长度
     if(caplen < toal_len)
     {
-        PrintD("error: Incomplete ip4 package, caplen=%lu,toal_len=%lu", caplen, toal_len);
+        PrintD("error: Incomplete ip4 package, caplen=%u,toal_len=%u", caplen, toal_len);
         return chw::fail;
     }
 
     //4.捕获长度大于ip头解析的总长度，继续解析
     if(caplen > toal_len)
     {
-        PrintD("warn: too big ip4 caplen=%lu,toal_len=%lu", caplen, toal_len);
+        //当原始数据不足60时网卡会自动补0，出现 caplen > toal_len 的情况
+        // PrintD("warn: too big ip4 caplen=%u,toal_len=%u", caplen, toal_len);
     }
 
     switch (ipHeader->protocol)
@@ -451,6 +713,7 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, uint32_t caplen, std::string& pr
     }
 
     chw::ip6hdr* ipHeader = (chw::ip6hdr*)(buf);
+    ayz.ip6 = ipHeader;
 
     std::string srcIp = chw::sockaddr_ipv6(ipHeader->saddr);
     std::string dstIp = chw::sockaddr_ipv6(ipHeader->daddr);
@@ -513,7 +776,7 @@ uint32_t PcapParse::UdpDecode(const char* buf, uint16_t caplen, chw::ayz_info& a
 	ayz.udp = (chw::udphdr*)(buf);
 
     // chw::udphdr* udpHeader = (chw::udphdr*)(buf);
-    if(ayz.udp->len != caplen)
+    if(ntohs(ayz.udp->len) != caplen)
     {
         PrintD("error: no match udp caplen=%lu,ayz udp len=%lu", caplen,ayz.udp->len);
         return chw::fail;
