@@ -306,6 +306,7 @@ enum and_or {
 // 条件表达式的关系运算符
 enum _operator {
     _EQUAL,             // ==
+	_UNEQUAL,		    // !=
     _GREATER,           // >
     _GREATER_EQUAL,     // >=
     _LESS,              // <

@@ -71,6 +71,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
 
     size_t proto_offset = 0;//以太头偏移
     mPackIndex = 0;//抓包帧序号
+	uint32_t match_index = 0;
     while (offset < fileSize)
     {
 		//1.解析pcap帧头
@@ -164,6 +165,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         {
             continue;
         }
+		match_index ++;
 
 
         //输出日志
@@ -183,7 +185,8 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         }
     }
 
-    PrintD("total package count:%d", mPackIndex);
+	PrintD("total package count:%u", mPackIndex);
+    PrintD("match package count:%u", match_index);
 
     return chw::success;
 }
@@ -227,29 +230,7 @@ std::string PcapParse::match_json(char* buf, size_t size)
 
     return desc;
 }
-/*
-// 条件表达式
-//demo:
-//tcp.dstport == 80	# desc
-//==				# op
-//tcp.dstport		# exp_front
-//80 				# exp_back
-//tcp 				# protol
-//dstport 			# po_value
-struct FilterCond {
-    bool bValid = false;// 是否有效的条件
-    and_or ao;// 与上一个FilterCond是 && 还是 || 关系
 
-    std::string desc;// 来自命令行的原始条件表达式
-    _operator op;// 比较运算符
-    std::string exp_front;// 比较运算符前面的表达式
-    std::string exp_back;// 比较运算符后面的表达式
-    bool non = false;// 最前面是否包含 ! 运算符，最多只能有一个!运算符，不像wireshark可以嵌套多个
-
-    _protocol potol;// 协议类型
-    uint16_t option_val;// 协议的参数选项
-};
-};*/
 uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
 {
     if(g_vCondFilter.size() == 0)
@@ -292,7 +273,14 @@ uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
 
         if(g_vCondFilter[index].non == true)
         {
-            match_ret = !match_ret;
+            if(match_ret == chw::fail)
+			{
+				match_ret = chw::success;
+			}
+			else
+			{
+				match_ret = chw::fail;
+			}
         }
 
         switch(g_vCondFilter[index].ao)
@@ -303,13 +291,30 @@ uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
             {
                 return chw::fail;
             }
+			else
+			{
+				if(index == g_vCondFilter.size() - 1)
+				{
+					return chw::success;
+				}
+			}
             break;
             case chw::_or:
             //前一个条件和当前条件都是false，则返回失败
-            if(last_match == chw::fail && match_ret == chw::fail)
-            {
-                return chw::fail;
-            }
+			if(index != 0)
+			{
+           		if(last_match == chw::fail && match_ret == chw::fail)
+	            {
+    	            return chw::fail;
+        	    }
+			else
+			{
+				if(index == g_vCondFilter.size() - 1)
+				{
+					return chw::success;
+				}
+			}
+			}
             break;
             case chw::_null:
 
@@ -319,7 +324,7 @@ uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
         last_match = match_ret;
 	}
 
-    return chw::success;
+    return last_match;
 }
 
 /**
@@ -335,6 +340,8 @@ uint32_t CompareOpt(uint32_t ayz_len, uint32_t cond_len, chw::_operator op)
     {
     case chw::_EQUAL:             // ==
         return ayz_len == cond_len ? chw::success : chw::fail;
+    case chw::_UNEQUAL:           // !=
+        return ayz_len != cond_len ? chw::success : chw::fail;
     case chw::_GREATER:           // >
         return ayz_len > cond_len ? chw::success : chw::fail;
     case chw::_GREATER_EQUAL:     // >=

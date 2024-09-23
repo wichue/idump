@@ -254,7 +254,7 @@ uint32_t is_valid_mac_addr(const char* mac) {
     const int cflags = REG_EXTENDED | REG_NEWLINE;
 
     char ebuf[128];
-    regmatch_t pmatch[1];
+    regmatch_t pmatch[10];
     int nmatch = 10;
     regex_t reg;
 

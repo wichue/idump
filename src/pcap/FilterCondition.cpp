@@ -53,6 +53,15 @@ void FilterCondition::ParseFilter(char* filter)
                 break;
             }
 
+            list = chw::split(iter_cond->desc,"!=");
+            if( list.size() == 2)
+            {
+                iter_cond->exp_front = list[0];
+                iter_cond->exp_back = list[1];
+                iter_cond->op = chw::_UNEQUAL;
+                break;
+            }
+
             list = chw::split(iter_cond->desc,">=");
             if( list.size() == 2)
             {
@@ -104,13 +113,15 @@ void FilterCondition::ParseFilter(char* filter)
 			}
 			else
 			{
-				iter_cond = g_vCondFilter.erase(iter_cond);
+				exit(1);
+				//iter_cond = g_vCondFilter.erase(iter_cond);
 			}
         }
         else
         {
             PrintD("unknown operator,desc=%s",iter_cond->desc.c_str());
             iter_cond = g_vCondFilter.erase(iter_cond);
+			exit(1);
         }
     }
 
