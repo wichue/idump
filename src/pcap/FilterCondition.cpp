@@ -131,12 +131,15 @@ uint32_t FilterCondition::exp_back2int(chw::FilterCond& cond)
 {
 	if(cond.exp_back.size() > 0)
 	{
+		/*
 		try {
 			cond.int_comm = std::stoi(cond.exp_back);
 		} catch (const std::exception& ex) {
 			PrintD("error: failed string to int,exp_back=%s",cond.exp_back.c_str());
 			return chw::fail;
 		}
+		*/
+		cond.int_comm = chw::String2Num<uint32_t>(cond.exp_back);	
 	}
 
 	return chw::success;
@@ -202,6 +205,30 @@ uint32_t FilterCondition::exp_back2mac(chw::FilterCond& cond)
 	{
 		_SET_MEM_(cond.mac,sizeof(cond.mac),0,sizeof(cond.mac));
 		return chw::StrtoMacBuf(cond.exp_back.c_str(),cond.mac);
+	}
+
+	return chw::success;
+}
+
+/**
+ * @brief 16进制以太类型转换位10进制
+ * 
+ * @param cond [in][out]条件表达式
+ * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
+ */
+uint32_t FilterCondition::exp_back2ethtype(chw::FilterCond& cond)
+{
+	if(cond.exp_back.size() > 0)
+	{
+		std::string type = chw::StrHex2StrBuf(cond.exp_back.c_str());
+		if(type.size() == 0)
+		{
+			return chw::fail;
+		}
+		else
+		{
+			cond.int_comm = *(uint16_t*)type.c_str();
+		}
 	}
 
 	return chw::success;
@@ -295,7 +322,7 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else if(vFornt[1] == "type")
 			{
 				cond.option_val = chw::eth_type;
-				return exp_back2int(cond);
+				return exp_back2ethtype(cond);
 			}
 			else
 			{
@@ -327,7 +354,7 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else if(vFornt[1] == "id")
 			{
 				cond.option_val = chw::ip_id;
-				return exp_back2int(cond);
+				return exp_back2ethtype(cond);
 			}
 			else if(vFornt[1] == "fragment")
 			{
@@ -347,7 +374,8 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else if(vFornt[1] == "checksum")
 			{
 				cond.option_val = chw::ip_checksum;
-				return exp_back2int(cond);
+//				return exp_back2int(cond);
+				return exp_back2ethtype(cond);
 			}
 			else if(vFornt[1] == "src_host")
 			{
@@ -462,6 +490,7 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else if(vFornt[1] == "checksum")
 			{
 				cond.option_val = chw::tcp_checksum;
+				return exp_back2ethtype(cond);
 			}
 			else if(vFornt[1] == "urgent_pointer")
 			{
@@ -490,6 +519,7 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else if(vFornt[1] == "checksum")
 			{
 				cond.option_val = chw::udp_checksum;
+				return exp_back2ethtype(cond);
 			}
 			else
 			{

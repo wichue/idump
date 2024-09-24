@@ -22,6 +22,7 @@ private:
     uint32_t exp_back2ipv4(chw::FilterCond& cond);
     uint32_t exp_back2ipv6(chw::FilterCond& cond);
     uint32_t exp_back2mac(chw::FilterCond& cond);
+    uint32_t exp_back2ethtype(chw::FilterCond& cond);
 };
 
 

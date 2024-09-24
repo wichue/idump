@@ -11,7 +11,6 @@
 #include "GlobalValue.h"
 #include "PcapParse.h"
 #include "JsonCondition.h"
-#include "SysInfo.h"
 #include "FilterCondition.h"
 
 //捕获ctrl+c

@@ -118,13 +118,13 @@ struct ip4hdr {
 typedef struct _IP6Hdr
 {
 #if defined(__LITTLE_ENDIAN)
-    uint32_t version:4;// ip版本，6
-    uint32_t priority:8;// 通信优先级
     uint32_t flow_lbl:20;// 流标签，可用来标记报文的数据流类型，以便在网络层区分不同的报文。
+    uint32_t priority:8;// 通信优先级
+    uint32_t version:4;// ip版本，6
 #elif defined(__BIG_ENDIAN)
-    uint32_t flow_lbl:20;// 流标签，可用来标记报文的数据流类型，以便在网络层区分不同的报文。
-    uint32_t priority:8;// 通信优先级
     uint32_t version:4;// ip版本，6
+    uint32_t priority:8;// 通信优先级
+    uint32_t flow_lbl:20;// 流标签，可用来标记报文的数据流类型，以便在网络层区分不同的报文。
 #endif
     uint16_t payload_len; // PayLoad Length 除了ipv6头部以外的负载长度(传输层+应用层长度)
     uint8_t nexthdr; // Next Header 可能是tcp/udp协议类型，也可能是IPv6扩展报头
@@ -355,7 +355,7 @@ enum ip_option {
 // ipv6的条件选项
 enum ipv6_option {
     ipv6_version,     //ip版本
-    ipv6_flow,         //流标签
+    ipv6_flow,         //流标签:todo
     ipv6_plen,         //除了ipv6头部以外的负载长度(传输层+应用层长度)
     ipv6_nxt,          //Next Header 可能是tcp/udp协议类型，也可能是IPv6扩展报头
     ipv6_src_host,     //源IP地址

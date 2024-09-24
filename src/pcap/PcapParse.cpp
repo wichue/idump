@@ -502,23 +502,25 @@ uint32_t PcapParse::match_ipv6(const chw::ayz_info& ayz, const chw::FilterCond& 
         return chw::success;
     }
 
+	uint32_t ver = 0;
     switch(cond.option_val)
 	{
-	case chw::ip_version:
-        return CompareOpt(ayz.ip6->version, cond.int_comm, cond.op);
-    case chw::ip_tos:
-        return CompareOpt(ayz.ip6->flow_lbl, cond.int_comm, cond.op);
-    case chw::ip_len:
+	case chw::ipv6_version://demo:60 09 fa 93
+		ver = (uint32_t)chw::int16_highfour(ntohs(*(int16_t*)ayz.ip6));
+        return CompareOpt(ver, cond.int_comm, cond.op);
+   // case chw::ipv6_flow:
+   //     return CompareOpt(ayz.ip6->flow_lbl, cond.int_comm, cond.op);
+    case chw::ipv6_plen:
         return CompareOpt(ntohs(ayz.ip6->payload_len), cond.int_comm, cond.op);
-	case chw::ip_id:
+	case chw::ipv6_nxt:
         return CompareOpt(ayz.ip6->nexthdr, cond.int_comm, cond.op);
-    case chw::ip_src_host:
+    case chw::ipv6_src_host:
         if(_CMP_MEM_(&ayz.ip6->saddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
         {
             return chw::success;
         }
         break;
-	case chw::ip_dst_host:
+	case chw::ipv6_dst_host:
         if(_CMP_MEM_(&ayz.ip6->daddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
         {
             return chw::success;
@@ -558,7 +560,7 @@ uint32_t PcapParse::match_tcp(const chw::ayz_info& ayz, const chw::FilterCond& c
     switch(cond.option_val)
 	{
 	case chw::tcp_hdr_len:
-        return CompareOpt(ayz.tcp->doff, cond.int_comm, cond.op);
+        return CompareOpt(ayz.tcp->doff * 4, cond.int_comm, cond.op);
     case chw::tcp_srcport:
         return CompareOpt(ntohs(ayz.tcp->source), cond.int_comm, cond.op);
     case chw::tcp_dstport:
@@ -584,7 +586,7 @@ uint32_t PcapParse::match_tcp(const chw::ayz_info& ayz, const chw::FilterCond& c
     case chw::tcp_cwr:
         return CompareOpt(ayz.tcp->cwr, cond.int_comm, cond.op);
     case chw::tcp_window_size:
-        return CompareOpt(ayz.tcp->window, cond.int_comm, cond.op);
+        return CompareOpt(ntohs(ayz.tcp->window), cond.int_comm, cond.op);
     case chw::tcp_checksum:
         return CompareOpt(ayz.tcp->check, cond.int_comm, cond.op);
     case chw::tcp_urgent_pointer:
@@ -621,7 +623,7 @@ uint32_t PcapParse::match_udp(const chw::ayz_info& ayz, const chw::FilterCond& c
 	case chw::udp_dstport:
         return CompareOpt(ntohs(ayz.udp->dest), cond.int_comm, cond.op);
     case chw::udp_length:
-        return CompareOpt(ayz.udp->len, cond.int_comm, cond.op);
+        return CompareOpt(ntohs(ayz.udp->len), cond.int_comm, cond.op);
     case chw::udp_checksum:
         return CompareOpt(ayz.udp->check, cond.int_comm, cond.op);
 
@@ -691,6 +693,9 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, uint32_t caplen, std::string& pr
         case 6: // TCP协议
             pro = "tcp";
             return TcpDecode(buf + head_len, toal_len - head_len, ayz);
+		case 1: // ICMP
+			pro = "ICMP";
+			break;
         default:
             // 其他协议，待补充
             break;
@@ -755,6 +760,9 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, uint32_t caplen, std::string& pr
         case 6: // TCP协议
             pro = "tcp";
             return TcpDecode(buf + head_len, load_len, ayz);
+		case 1: // ICMP
+			pro = "ICMP";
+			break;
         default:
             // 其他协议，待补充
             break;

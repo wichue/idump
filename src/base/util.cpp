@@ -500,4 +500,35 @@ std::string replaceAll(const std::string& str, const std::string& find, const st
     return res;
 }
 
+
+int32_t int32_lowfour(int32_t num)
+{
+	return num & 0xF;
+}
+
+int32_t int32_highfour(int32_t num)
+{
+	return ((num >> 28) & 0xF);
+}
+
+int16_t int16_lowfour(int16_t num)
+{
+	return num & 0xF;
+}
+
+int16_t int16_highfour(int16_t num)
+{
+    return ((num >> 12) & 0xF);
+}
+
+int8_t int8_lowfour(int8_t num)
+{
+    return num & 0xF;
+}
+
+int8_t int8_highfour(int8_t num)
+{
+    return ((num >> 4) & 0xF);
+}
+
 } /* namespace chw */

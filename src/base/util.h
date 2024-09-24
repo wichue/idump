@@ -4,6 +4,7 @@
 #include <memory>// for std::shared_ptr
 #include <vector>
 #include <netinet/in.h>// for in_addr in6_addr
+#include <sstream>
 
 // 单例宏
 #define INSTANCE_IMP(class_name, ...) \
@@ -185,6 +186,24 @@ std::string HexBuftoString(const unsigned char *value, int len);
  */
 std::string replaceAll(const std::string& str, const std::string& find, const std::string& rep);
 
+// 模板函数：将string类型变量转换为常用的数值类型（此方法具有普遍适用性）
+// 遇到非数字字符停止，停止前没有数字字符则返回0
+
+template <class Type>
+Type String2Num(const std::string& str){
+	std::istringstream iss(str);
+	Type num;
+	iss >> num;
+	return num;
+}
+
+
+int32_t int32_lowfour(int32_t num);
+int32_t int32_highfour(int32_t num);
+int16_t int16_lowfour(int16_t num);
+int16_t int16_highfour(int16_t num);
+int8_t int8_lowfour(int8_t num);
+int8_t int8_highfour(int8_t num);
 
 //禁止拷贝基类
 class noncopyable {

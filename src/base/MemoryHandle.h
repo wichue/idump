@@ -10,7 +10,7 @@
 #define _MEMORY_PROTECT_ 0
 #endif //_MEMORY_PROTECT_
 
-#define DF_INT_MAX_PROTECT_MEM (500*1024*1024)
+#define MAX_ALLOC_MEMORY (500*1024*1024)
 
 #define _NEW_MEM_(len) chw::malloc(len)
 #define _DEL_MEM_(ptr) chw::free(ptr)
@@ -29,7 +29,7 @@ namespace chw {
 static inline void *malloc(size_t size)
 {
 #if 0
-    if(size > DF_INT_MAX_PROTECT_MEM)
+    if(size > MAX_ALLOC_MEMORY)
         assert(0);
 #endif
     void *buf = NULL;
@@ -63,8 +63,8 @@ static inline void *s_memset(void *pDst, ssize_t uDstLen, int32_t SetValue, ssiz
 {
 #if _MEMORY_PROTECT_
     assert(uDstLen>=uSetLen);
-    assert(uDstLen>=0 && uDstLen < DF_INT_MAX_PROTECT_MEM
-           && uSetLen >=0 && uSetLen<DF_INT_MAX_PROTECT_MEM);
+    assert(uDstLen>=0 && uDstLen < MAX_ALLOC_MEMORY
+           && uSetLen >=0 && uSetLen<MAX_ALLOC_MEMORY);
 #else
     (void)uDstLen;
 #endif
@@ -81,8 +81,8 @@ static inline void s_memzero(void *pDst, ssize_t uDstLen, ssize_t uSetPos)
 {
 #if _MEMORY_PROTECT_
     assert(uDstLen>=uSetPos+1);
-    assert(uDstLen>=0 && uDstLen < DF_INT_MAX_PROTECT_MEM
-           && uSetPos >=0 && uSetPos<DF_INT_MAX_PROTECT_MEM);
+    assert(uDstLen>=0 && uDstLen < MAX_ALLOC_MEMORY
+           && uSetPos >=0 && uSetPos<MAX_ALLOC_MEMORY);
 #else
     (void)uDstLen;
 #endif
@@ -100,8 +100,8 @@ static inline void s_memcpy(void *pDst,ssize_t uDstLen,const void * const pSrc,s
 {
 #if _MEMORY_PROTECT_
     assert(uDstLen>=uCpyLen);
-    assert(uDstLen>=0 && uDstLen < DF_INT_MAX_PROTECT_MEM
-           && uCpyLen >=0 && uCpyLen<DF_INT_MAX_PROTECT_MEM);
+    assert(uDstLen>=0 && uDstLen < MAX_ALLOC_MEMORY
+           && uCpyLen >=0 && uCpyLen<MAX_ALLOC_MEMORY);
 #else
     (void)uDstLen;
 #endif
@@ -120,8 +120,8 @@ static inline int32_t s_memcmp(const void * const pDst,ssize_t uDstLen,const voi
 {
 #if _MEMORY_PROTECT_
     assert(uDstLen>=uCmpLen);
-    assert(uDstLen>=0 && uDstLen < DF_INT_MAX_PROTECT_MEM
-           && uCmpLen >=0 && uCmpLen<DF_INT_MAX_PROTECT_MEM);
+    assert(uDstLen>=0 && uDstLen < MAX_ALLOC_MEMORY
+           && uCmpLen >=0 && uCmpLen<MAX_ALLOC_MEMORY);
 #else
     (void)uDstLen;
 #endif
