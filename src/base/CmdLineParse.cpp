@@ -4,6 +4,7 @@
 #include <stdio.h>// for printf
 
 #include "GlobalValue.h"
+#include "Logger.h"
 
 namespace chw {
 
@@ -28,24 +29,25 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
     while ((flag = getopt_long(argc, argv, "hvf:s:g:mn:j:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'f':
-                printf("file name:%s\n", optarg);
+                PrintD("file name:%s\n", optarg);
                 gConfigCmd.file = optarg;
                 break;
             case 'p':
-                printf("p:%d\n", atoi(optarg));
+                PrintD("p:%d\n", atoi(optarg));
                 break;
             case 's':
                 gConfigCmd.save = optarg;
-                printf("save name:%s\n", gConfigCmd.save);
+                PrintD("save name:%s\n", gConfigCmd.save);
                 break;
             case 'j':
+                PrintD("json name:%s\n", gConfigCmd.json);
                 gConfigCmd.json = optarg;
                 break;
             case 'n':
                 gConfigCmd.max = atoi(optarg);
                 break;
             case 'g':
-                printf("filter name:%s\n", optarg);
+                PrintD("filter cond:%s\n", optarg);
                 gConfigCmd.filter = optarg;
                 break;
                 

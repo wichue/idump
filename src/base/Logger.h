@@ -145,10 +145,11 @@ public:
     //_file,_function改成string保存，目的是有些情况下，指针可能会失效
     //比如说动态库中打印了一条日志，然后动态库卸载了，那么指向静态数据区的指针就会失效
     LogContext() = default;
-    LogContext(LogLevel level, const char *file, const char *function, int line, const char *module_name, const char *flag);
+    LogContext(LogLevel level,bool bCR, const char *file, const char *function, int line, const char *module_name, const char *flag);
     ~LogContext() = default;
 
     LogLevel _level;
+	bool _bCR;// 是否打印换行符
     int _line;
     int _repeat = 0;
     std::string _file;
@@ -172,7 +173,7 @@ class LogContextCapture {
 public:
     using Ptr = std::shared_ptr<LogContextCapture>;
 
-    LogContextCapture(Logger &logger, LogLevel level, const char *file, const char *function, int line, const char *flag = "");
+    LogContextCapture(Logger &logger, LogLevel level,bool bCR, const char *file, const char *function, int line, const char *flag = "");
     LogContextCapture(const LogContextCapture &that);
     ~LogContextCapture();
 
@@ -402,13 +403,13 @@ class LoggerWrapper {
 public:
     template<typename First, typename ...ARGS>
     static inline void printLogArray(Logger &logger, LogLevel level, const char *file, const char *function, int line, First &&first, ARGS &&...args) {
-        LogContextCapture log(logger, level, file, function, line);
+        LogContextCapture log(logger, level,true, file, function, line);
         log << std::forward<First>(first);
         appendLog(log, std::forward<ARGS>(args)...);
     }
 
     static inline void printLogArray(Logger &logger, LogLevel level, const char *file, const char *function, int line) {
-        LogContextCapture log(logger, level, file, function, line);
+        LogContextCapture log(logger, level,true, file, function, line);
     }
 
     template<typename Log, typename First, typename ...ARGS>
@@ -421,15 +422,15 @@ public:
     static inline void appendLog(Log &out) {}
 
     //printf样式的日志打印
-    static void printLog(Logger &logger, int level, const char *file, const char *function, int line, const char *fmt, ...);
-    static void printLogV(Logger &logger, int level, const char *file, const char *function, int line, const char *fmt, va_list ap);
+    static void printLog(Logger &logger, int level,bool bCR, const char *file, const char *function, int line, const char *fmt, ...);
+    static void printLogV(Logger &logger, int level,bool bCR, const char *file, const char *function, int line, const char *fmt, va_list ap);
 };
 
 //可重置默认值
 extern Logger *g_defaultLogger;
 
 //用法: DebugL << 1 << "+" << 2 << '=' << 3;
-#define WriteL(level) ::chw::LogContextCapture(::chw::getLogger(), level, __FILE__, __FUNCTION__, __LINE__)
+#define WriteL(level) ::chw::LogContextCapture(::chw::getLogger(), level,true, __FILE__, __FUNCTION__, __LINE__)
 #define TraceL WriteL(::chw::LTrace)
 #define DebugL WriteL(::chw::LDebug)
 #define InfoL WriteL(::chw::LInfo)
@@ -445,9 +446,11 @@ extern Logger *g_defaultLogger;
 #define ErrorF WriteF(::chw::LError)
 
 //用法: PrintD("%d + %s = %c", 1 "2", 'c');
-#define PrintLog(level, ...) ::chw::LoggerWrapper::printLog(::chw::getLogger(), level, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define PrintLog(level,bCR, ...) ::chw::LoggerWrapper::printLog(::chw::getLogger(), level,bCR, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define PrintT(...) PrintLog(::chw::LTrace, ##__VA_ARGS__)
-#define PrintD(...) PrintLog(::chw::LDebug, ##__VA_ARGS__)
+#define PrintD(...) PrintLog(::chw::LDebug,true, ##__VA_ARGS__)
+// 不打印换行符
+#define PrintNCR(...) PrintLog(::chw::LDebug,false, ##__VA_ARGS__)
 #define PrintI(...) PrintLog(::chw::LInfo, ##__VA_ARGS__)
 #define PrintW(...) PrintLog(::chw::LWarn, ##__VA_ARGS__)
 #define PrintE(...) PrintLog(::chw::LError, ##__VA_ARGS__)

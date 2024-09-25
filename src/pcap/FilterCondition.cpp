@@ -155,7 +155,7 @@ uint32_t FilterCondition::exp_back2ipv4(chw::FilterCond& cond)
 {
 	if(cond.exp_back.size() > 0)
 	{
-		_SET_MEM_(&cond.ipv4,sizeof(struct in_addr),0,sizeof(struct in_addr));
+		_RAM_SET_(&cond.ipv4,sizeof(struct in_addr),0,sizeof(struct in_addr));
 		if(chw::host2addr_ipv4(cond.exp_back.c_str(), cond.ipv4) == 1)
 		{
 			return chw::success;
@@ -179,7 +179,7 @@ uint32_t FilterCondition::exp_back2ipv6(chw::FilterCond& cond)
 {
 	if(cond.exp_back.size() > 0)
 	{
-		_SET_MEM_(&cond.ipv6,sizeof(struct in6_addr),0,sizeof(struct in6_addr));
+		_RAM_SET_(&cond.ipv6,sizeof(struct in6_addr),0,sizeof(struct in6_addr));
 		if(chw::host2addr_ipv6(cond.exp_back.c_str(), cond.ipv6) == 1)
 		{
 			return chw::success;
@@ -203,7 +203,7 @@ uint32_t FilterCondition::exp_back2mac(chw::FilterCond& cond)
 {
 	if(cond.exp_back.size() > 0)
 	{
-		_SET_MEM_(cond.mac,sizeof(cond.mac),0,sizeof(cond.mac));
+		_RAM_SET_(cond.mac,sizeof(cond.mac),0,sizeof(cond.mac));
 		return chw::StrtoMacBuf(cond.exp_back.c_str(),cond.mac);
 	}
 
@@ -301,6 +301,10 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 			else if(vFornt[1] == "cap_len")
 			{
 				cond.option_val = chw::frame_cap_len;
+			}
+			else if(vFornt[1] == "number")
+			{
+				cond.option_val = chw::frame_number;
 			}
 			else
 			{

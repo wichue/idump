@@ -262,18 +262,18 @@ uint32_t is_valid_mac_addr(const char* mac) {
     status = regcomp(&reg, pattern, cflags);//编译正则模式
     if(status != 0) {
         regerror(status, &reg, ebuf, sizeof(ebuf));
-        printf( "regcomp fail: %s , pattern '%s' \n",ebuf, pattern);
+        PrintD( "error:regcomp fail: %s , pattern '%s' \n",ebuf, pattern);
         goto failed;
     }
 
     status = regexec(&reg, mac, nmatch, pmatch,0);//执行正则表达式和缓存的比较,
     if(status != 0) {
         regerror(status, &reg, ebuf, sizeof(ebuf));
-        printf( "regexec fail: %s , mac:\"%s\" \n", ebuf, mac);
+        PrintD( "error:regexec fail: %s , mac:\"%s\" \n", ebuf, mac);
         goto failed;
     }
 
-    printf("[%s] match success.\n", __FUNCTION__);
+    //PrintD("[%s] match success.\n", __FUNCTION__);
     regfree(&reg);
     return chw::success;
 
@@ -342,22 +342,77 @@ std::vector<std::string> split(const std::string &s, const char *delim) {
     return ret;
 }
 
-void PrintBuffer(void* pBuff, unsigned int nLen)
+#ifdef _WIN32
+#define CLEAR_COLOR 7
+static const WORD LOG_CONST_TABLE[][3] = {
+        {0x97, 0x09 , 'T'},//蓝底灰字，黑底蓝字，window console默认黑底
+        {0xA7, 0x0A , 'D'},//绿底灰字，黑底绿字
+        {0xB7, 0x0B , 'I'},//天蓝底灰字，黑底天蓝字
+        {0xE7, 0x0E , 'W'},//黄底灰字，黑底黄字
+        {0xC7, 0x0C , 'E'} };//红底灰字，黑底红字
+
+bool SetConsoleColor(WORD Color)
+{
+    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (handle == 0)
+        return false;
+
+    BOOL ret = SetConsoleTextAttribute(handle, Color);
+    return(ret == TRUE);
+}
+#else
+#define CLEAR_COLOR "\033[0m"
+static const char *LOG_CONST_TABLE[][3] = {
+        {"\033[44;37m", "\033[34m", "T"},	//blue
+        {"\033[42;37m", "\033[32m", "D"},	//green
+        {"\033[46;37m", "\033[36m", "I"},	//cyan
+        {"\033[43;37m", "\033[33m", "W"},	//yellow
+        {"\033[41;37m", "\033[31m", "E"}};	//red
+#endif
+
+void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
 {
     if (NULL == pBuff || 0 == nLen)
     {
         return;
     }
-    static char* szHex_all = (char*)_NEW_MEM_(gConfigCmd.max * 4);
+
+	// 输出到命令行使用颜色，输出到日志不使用颜色
+	uint32_t net_hdrlen = 0;
+	uint32_t trans_hdrlen = 0;
+	if(gConfigCmd.save == nullptr)
+	{
+		// 计算网络层和传输层头长度
+		if(ayz.ipver == IPV4)
+		{
+			net_hdrlen = ayz.ip4->ihl * 4;
+		}
+		else if(ayz.ipver == IPV6)
+		{
+			net_hdrlen = sizeof(chw::ip6hdr);
+		}
+
+		if(ayz.transport == tcp_trans)
+		{
+			trans_hdrlen = ayz.tcp->doff * 4;
+		}
+		else if(ayz.transport == udp_trans)
+		{
+			trans_hdrlen = 8;
+		}
+	}
+
+    static char* szHex_all = (char*)_RAM_NEW_(gConfigCmd.max * 4);
 
     const int nBytePerLine = 16;//每一行显示的字节数
     unsigned char* p = (unsigned char*)pBuff;
 
-    _SET_MEM_(szHex_all,gConfigCmd.max * 4,0,gConfigCmd.max * 4);
+    _RAM_SET_(szHex_all,gConfigCmd.max * 4,0,gConfigCmd.max * 4);
     uint32_t uIndex = 0;
     uint32_t uCount = 0;
+	uint32_t uPrinted = 0;
 
-    for (unsigned int i=0; i<nLen; ++i)
+    for (uint32_t i=0; i<nLen; ++i)
     {
 #ifdef WIN32
         sprintf_s(&szHex_all[uIndex], 4, "%02x ", p[i]);// buff长度要多传入1个字节
@@ -366,6 +421,13 @@ void PrintBuffer(void* pBuff, unsigned int nLen)
 #endif
         uIndex += 3;//去掉每次拼接加的\0
         
+		// 前八个和后八个字节中间加空格
+        if (0 == ((i+1) % (nBytePerLine/2)))
+        {
+            szHex_all[uIndex] = ' ';
+            uIndex++;
+        }
+
         // 以16个字节为一行，进行打印
         if (0 == ((i+1) % nBytePerLine))
         {
@@ -373,21 +435,68 @@ void PrintBuffer(void* pBuff, unsigned int nLen)
             uIndex++;
         }
 
+        //设置条件跳出打印
+        uCount++;
+		if(uCount >= gConfigCmd.max)
         {
-            //设置条件跳转出打印
-            uCount++;
-            if(uCount >= gConfigCmd.max)
-            {
-                szHex_all[uIndex++] = '.';
-                szHex_all[uIndex++] = '.';
-                szHex_all[uIndex++] = '.';
-                break;
-            }
+            szHex_all[uIndex++] = '.';
+            szHex_all[uIndex++] = '.';
+            szHex_all[uIndex++] = '.';
+            break;
         }
+
+		// 输出到命令行使用颜色，输出到日志不使用颜色
+    	if(gConfigCmd.save == nullptr)
+		{
+			// 先输出目的MAC和源MAC，固定12字节
+			if(i == 11)
+			{
+				uPrinted = uIndex;
+    			PrintNCR("%s", szHex_all);
+			}
+			// 网络层协议类型固定2字节
+			if(i == 13)
+			{
+				PrintNCR("%s",LOG_CONST_TABLE[2][1]);
+    			PrintNCR("%s", szHex_all + uPrinted);
+				PrintNCR("%s", CLEAR_COLOR);
+				uPrinted = uIndex;
+			}
+			// 网络层协议头
+			if(i == 13 + net_hdrlen)
+			{
+				PrintNCR("%s",LOG_CONST_TABLE[0][1]);
+    			PrintNCR("%s", szHex_all + uPrinted);
+				PrintNCR("%s", CLEAR_COLOR);
+				uPrinted = uIndex;
+			}
+			// 传输层协议头
+			if(i == 13 + net_hdrlen + trans_hdrlen)
+			{
+				PrintNCR("%s",LOG_CONST_TABLE[1][1]);
+    			PrintNCR("%s", szHex_all + uPrinted);
+				PrintNCR("%s", CLEAR_COLOR);
+				uPrinted = uIndex;
+			}
+			// json匹配条件,只对应用层的数据使用颜色
+			uint32_t pre_app_len = 14 + net_hdrlen + trans_hdrlen;// 应用层数据前面的长度（以太头 + 网络层头 + 传输层头的长度）
+//			PrintD("json_start=%u,json_end=%u,i=%u,pre_app_len=%u",ayz.json_start,ayz.json_end,i,pre_app_len);
+				if(i == ayz.json_end
+				&& ayz.json_start > pre_app_len - 1)
+				{
+					std::string msg(szHex_all,ayz.json_start - pre_app_len - 1);
+					uPrinted += uPrinted + ayz.json_start - pre_app_len - 1;
+	    			PrintNCR("%s", msg.c_str());
+					PrintNCR("%s",LOG_CONST_TABLE[4][1]);
+	    			PrintNCR("%s", szHex_all + uPrinted);
+					PrintNCR("%s", CLEAR_COLOR);
+					uPrinted = uIndex;
+				}
+		}
     }
     szHex_all[uIndex] = '\0';
 
-    PrintD("%s", szHex_all);
+    PrintD("%s", szHex_all + uPrinted);
 }
 
 bool StrIsNull(const char *value)

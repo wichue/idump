@@ -12,12 +12,12 @@
 
 #define MAX_ALLOC_MEMORY (500*1024*1024)
 
-#define _NEW_MEM_(len) chw::malloc(len)
-#define _DEL_MEM_(ptr) chw::free(ptr)
-#define _SET_MEM_(pDst,uDstLen,SetValue,uSetLen) chw::s_memset(pDst,uDstLen,SetValue,uSetLen)
-#define _ZERQ_MEM_(pDst,uDstLen,uSetPos) chw::s_memzero(pDst,uDstLen,uSetPos)
-#define _CPY_MEM_(pDst,uDstLen,pSrc,uCpyLen) chw::s_memcpy(pDst,uDstLen,pSrc,uCpyLen)
-#define _CMP_MEM_(pDst,uDstLen,pSrc,uCmpLen) chw::s_memcmp(pDst,uDstLen,pSrc,uCmpLen)
+#define _RAM_NEW_(len) chw::malloc(len)
+#define _RAM_DEL_(ptr) chw::free(ptr)
+#define _RAM_SET_(pDst,uDstLen,SetValue,uSetLen) chw::s_memset(pDst,uDstLen,SetValue,uSetLen)
+#define _RAM_ZERQ_(pDst,uDstLen,uSetPos) chw::s_memzero(pDst,uDstLen,uSetPos)
+#define _RAM_CPY_(pDst,uDstLen,pSrc,uCpyLen) chw::s_memcpy(pDst,uDstLen,pSrc,uCpyLen)
+#define _RAM_CMP_(pDst,uDstLen,pSrc,uCmpLen) chw::s_memcmp(pDst,uDstLen,pSrc,uCmpLen)
 
 namespace chw {
 

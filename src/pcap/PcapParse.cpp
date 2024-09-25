@@ -67,7 +67,7 @@ void PcapParse::parse_file(const char* filename)
  */
 uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf)
 {
-    PrintD("No.     time                    Source                          Destination                     protocol  len     desc      ");
+    PrintD("No.     time                    Source                          Destination                     protocol  caplen  desc      ");
 
     size_t proto_offset = 0;//以太头偏移
     mPackIndex = 0;//抓包帧序号
@@ -83,6 +83,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         mPackIndex++;
 
         chw::ayz_info ayz;
+		ayz.uIndex = mPackIndex;
         // pcap头
         chw::pcap_pkthdr* pcapHeader = (chw::pcap_pkthdr*)(buf + offset);
         proto_offset = offset + sizeof(chw::pcap_pkthdr);
@@ -97,7 +98,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         std::string desc = "";
         if(g_vCondJson.size() > 0)
         {
-            desc = match_json(buf + proto_offset, pcapHeader->caplen);
+            desc = match_json(buf + proto_offset, pcapHeader->caplen, ayz.json_start, ayz.json_end);
             if(desc.size() == 0)
             {
                 offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
@@ -181,7 +182,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
 
         if(gConfigCmd.max > 0)
         {
-            chw::PrintBuffer(buf + proto_offset, pcapHeader->caplen);
+            chw::PrintBuffer(buf + proto_offset, pcapHeader->caplen, ayz);
         }
     }
 
@@ -198,7 +199,7 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
  * @param size  帧长度
  * @return std::string 匹配到的描述，没有匹配到则为空
  */
-std::string PcapParse::match_json(char* buf, size_t size)
+std::string PcapParse::match_json(char* buf, size_t size, uint32_t& start, uint32_t& end)
 {
     std::string desc = "";
     auto iter = g_vCondJson.begin();
@@ -206,23 +207,28 @@ std::string PcapParse::match_json(char* buf, size_t size)
     {
         if(iter->start >= size)
         {
+			iter ++;
             continue;
         }
 
         if(iter->start + iter->compare.size() -1 > size)
         {
+			iter ++;
             continue;
         }
 
         if(iter->compare.size() == 0)
         {
+			iter ++;
             continue;
         }
 
         //todo:匹配通配符
-        if(_CMP_MEM_(iter->compare.c_str(), iter->compare.size(), buf + iter->start - 1, iter->compare.size()) == 0)
+        if(_RAM_CMP_(iter->compare.c_str(), iter->compare.size(), buf + iter->start, iter->compare.size()) == 0)
         {
             desc = iter->desc;
+			start = iter->start;
+			end = start + iter->compare.size() - 1;
             break;
         }
         iter ++;
@@ -384,6 +390,8 @@ uint32_t PcapParse::match_frame(const chw::ayz_info& ayz, const chw::FilterCond&
         return CompareOpt(ayz.pcap->len, cond.int_comm, cond.op);
 	case chw::frame_cap_len:
         return CompareOpt(ayz.pcap->caplen, cond.int_comm, cond.op);
+	case chw::frame_number:
+        return CompareOpt(ayz.uIndex, cond.int_comm, cond.op);
 
 	default:
 		break;
@@ -407,13 +415,13 @@ uint32_t PcapParse::match_eth(const chw::ayz_info& ayz, const chw::FilterCond& c
     switch(cond.option_val)
 	{
 	case chw::eth_dst:
-        if(_CMP_MEM_(ayz.eth->h_dest,ETH_ALEN,cond.mac,ETH_ALEN) == 0)
+        if(_RAM_CMP_(ayz.eth->h_dest,ETH_ALEN,cond.mac,ETH_ALEN) == 0)
         {
             return chw::success;
         }
         break;
 	case chw::eth_src:
-        if(_CMP_MEM_(ayz.eth->h_source,ETH_ALEN,cond.mac,ETH_ALEN) == 0)
+        if(_RAM_CMP_(ayz.eth->h_source,ETH_ALEN,cond.mac,ETH_ALEN) == 0)
         {
             return chw::success;
         }
@@ -515,13 +523,13 @@ uint32_t PcapParse::match_ipv6(const chw::ayz_info& ayz, const chw::FilterCond& 
 	case chw::ipv6_nxt:
         return CompareOpt(ayz.ip6->nexthdr, cond.int_comm, cond.op);
     case chw::ipv6_src_host:
-        if(_CMP_MEM_(&ayz.ip6->saddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
+        if(_RAM_CMP_(&ayz.ip6->saddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
         {
             return chw::success;
         }
         break;
 	case chw::ipv6_dst_host:
-        if(_CMP_MEM_(&ayz.ip6->daddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
+        if(_RAM_CMP_(&ayz.ip6->daddr,sizeof(struct in6_addr),&cond.ipv6,sizeof(struct in6_addr)) == 0)
         {
             return chw::success;
         }

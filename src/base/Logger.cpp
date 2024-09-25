@@ -25,6 +25,7 @@
 using namespace std;
 
 namespace chw {
+
 #ifdef _WIN32
 #define CLEAR_COLOR 7
 static const WORD LOG_CONST_TABLE[][3] = {
@@ -52,7 +53,6 @@ static const char *LOG_CONST_TABLE[][3] = {
         {"\033[43;37m", "\033[33m", "W"},
         {"\033[41;37m", "\033[31m", "E"}};
 #endif
-
 Logger *g_defaultLogger = nullptr;
 
 Logger &getLogger() {
@@ -78,7 +78,7 @@ Logger::Logger(const string &loggerName) {
 Logger::~Logger() {
     _writer.reset();
     {
-        LogContextCapture(*this, LInfo, __FILE__, __FUNCTION__, __LINE__);
+        LogContextCapture(*this, LInfo,true, __FILE__, __FUNCTION__, __LINE__);
     }
     _channels.clear();
 }
@@ -170,8 +170,8 @@ static inline const char *getFunctionName(const char *func) {
 #endif
 }
 
-LogContext::LogContext(LogLevel level, const char *file, const char *function, int line, const char *module_name, const char *flag)
-        : _level(level), _line(line), _file(getFileName(file)), _function(getFunctionName(function)),
+LogContext::LogContext(LogLevel level,bool bCR, const char *file, const char *function, int line, const char *module_name, const char *flag)
+        : _level(level),_bCR(bCR), _line(line), _file(getFileName(file)), _function(getFunctionName(function)),
           _module_name(module_name), _flag(flag) {
     gettimeofday(&_tv, nullptr);
     _thread_name = getThreadName();
@@ -190,8 +190,8 @@ const string &LogContext::str() {
 
 static string s_module_name = exeName(false);
 
-LogContextCapture::LogContextCapture(Logger &logger, LogLevel level, const char *file, const char *function, int line, const char *flag) :
-        _ctx(new LogContext(level, file, function, line, s_module_name.c_str(), flag)), _logger(logger) {
+LogContextCapture::LogContextCapture(Logger &logger, LogLevel level,bool bCR, const char *file, const char *function, int line, const char *flag) :
+        _ctx(new LogContext(level,bCR, file, function, line, s_module_name.c_str(), flag)), _logger(logger) {
 }
 
 LogContextCapture::LogContextCapture(const LogContextCapture &that) : _ctx(that._ctx), _logger(that._logger) {
@@ -293,7 +293,7 @@ void ConsoleChannel::write(const Logger &logger, const LogContextPtr &ctx) {
     __android_log_print(LogPriorityArr[ctx->_level],"JNI","%s %s",ctx->_function.data(),ctx->str().data());
 #else
     //linux/windows日志启用颜色并显示日志详情
-    format(logger, std::cout, ctx);
+    format(logger, std::cout, ctx, false);//chw: close color
 #endif
 }
 
@@ -401,7 +401,8 @@ void LogChannel::format(const Logger &logger, ostream &ost, const LogContextPtr 
     }
 
     // flush log and new line
-    ost << endl;
+	if(ctx->_bCR)
+	    ost << endl;
 }
 
 ///////////////////FileChannelBase///////////////////
@@ -614,8 +615,8 @@ void FileChannel::setFileMaxCount(size_t max_count) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void LoggerWrapper::printLogV(Logger &logger, int level, const char *file, const char *function, int line, const char *fmt, va_list ap) {
-    LogContextCapture info(logger, (LogLevel) level, file, function, line);
+void LoggerWrapper::printLogV(Logger &logger, int level,bool bCR, const char *file, const char *function, int line, const char *fmt, va_list ap) {
+    LogContextCapture info(logger, (LogLevel) level,bCR, file, function, line);
     char *str = nullptr;
     if (vasprintf(&str, fmt, ap) > 0 && str) {
         info << str;
@@ -623,10 +624,10 @@ void LoggerWrapper::printLogV(Logger &logger, int level, const char *file, const
     }
 }
 
-void LoggerWrapper::printLog(Logger &logger, int level, const char *file, const char *function, int line, const char *fmt, ...) {
+void LoggerWrapper::printLog(Logger &logger, int level,bool bCR, const char *file, const char *function, int line, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    printLogV(logger, level, file, function, line, fmt, ap);
+    printLogV(logger, level,bCR, file, function, line, fmt, ap);
     va_end(ap);
 }
 

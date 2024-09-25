@@ -29,7 +29,7 @@ private:
      * @param size  帧长度
      * @return std::string 匹配到的描述，没有匹配到则为空
      */
-    std::string match_json(char* buf, size_t size);
+	std::string match_json(char* buf, size_t size, uint32_t& start, uint32_t& end);
 	uint32_t match_filter(chw::ayz_info& ayz);
 
     /**

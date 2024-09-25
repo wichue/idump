@@ -5,6 +5,7 @@
 #include <vector>
 #include <netinet/in.h>// for in_addr in6_addr
 #include <sstream>
+#include "ComProtocol.h"
 
 // 单例宏
 #define INSTANCE_IMP(class_name, ...) \
@@ -143,7 +144,7 @@ std::vector<std::string> split(const std::string& s, const char *delim);
  * @param pBuff 内存
  * @param nLen  内存长度
  */
-void PrintBuffer(void* pBuff, unsigned int nLen);
+void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz);
 
 /**
  * @brief 判断字符串是否为空

@@ -230,6 +230,9 @@ typedef enum {
 struct ayz_info {
 	pcap_pkthdr* pcap;//frame包头
 	ethhdr* eth;//以太头
+	uint32_t uIndex;// 帧序号
+	uint32_t json_start;// 匹配到的json条件的起始位置
+	uint32_t json_end;// 匹配搭配的json条件的终止位置
 
 	uint8_t ipver;//ip协议类型
 	union {
@@ -245,6 +248,7 @@ struct ayz_info {
 
     ayz_info()
     {
+		uIndex = 0;
         pcap = nullptr;
         eth = nullptr;
         ip4 = nullptr;
@@ -291,7 +295,7 @@ struct ConfigCmd
 //从json文件读取的匹配条件
 struct CondJson
 {
-    uint16_t start;//比较的起始位置，从1开始
+    uint16_t start;//比较的起始位置，从0开始
     std::string compare;//要比较的16进制字符串，和该字符串相同则满足条件，*为通配符
     std::string desc;//满足当前条件报文的描述，会输出到日志上
 };
@@ -327,7 +331,8 @@ enum _protocol {
 // frame的条件选项
 enum frame_option {
 	frame_len,      // 帧长度
-	frame_cap_len   // 捕获长度
+	frame_cap_len,  // 捕获长度
+	frame_number	// 帧序号
 };
 
 // eth的条件选项
