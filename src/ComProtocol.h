@@ -268,6 +268,23 @@ enum chw_ret{
     fail
 };
 
+struct ComMatchBuf{
+	char* buf;
+	size_t size;
+	bool first;
+	uint32_t uDiff;
+	uint32_t compare_count;
+
+	ComMatchBuf()
+	{
+		buf = nullptr;
+		size = 0;
+		first = true;
+		uDiff = 0;
+		compare_count = 0;
+	}
+};
+
 //命令行参数
 struct ConfigCmd
 {
@@ -275,20 +292,30 @@ struct ConfigCmd
     char* filter;//过滤器(--filter)
     char* json;//过滤条件，从json文件读取(--json)
     char* save;//要保存的文件名(--save)，没有该选项则输出到屏幕
-
-    uint32_t start;//处理报文时首部忽略的字节数(--start)，没有该选项默认为0
-    uint32_t end;//处理报文时尾部忽略的字节数(--end)，没有该选项默认为0
-
     uint16_t max;//每帧打印报文的最大字节数(--max)，默认0不打印报文内容
+
+	//compare model
+	//比对模式，filter和json过滤条件依然有效，不再按帧输出日志，会输出比对结果
+	bool bCmp;//是否启动比对模式,是则必须输入 file1 和 file2 选项,不能有 file 选项(-c,--compare)
+	char* file1;//参与比对的文件1(--file1)
+	char* file2;//参与比对的文件2(--file2)
+    uint32_t start;//比对报文时首部忽略的字节数(--start)，没有该选项默认为0
+    uint32_t end;//比对报文时尾部忽略的字节数(--end)，没有该选项默认为0
+
 
     ConfigCmd()
     {
         file = nullptr;
         filter = nullptr;
+		json = nullptr;
         save = nullptr;
+        max = 0;
+
+		bCmp = false;
+		file1 = nullptr;
+		file2 = nullptr;
         start = 0;
         end = 0;
-        max = 0;
     }
 };
 

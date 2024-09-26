@@ -12,6 +12,8 @@
 #include "PcapParse.h"
 #include "JsonCondition.h"
 #include "FilterCondition.h"
+#include "Semaphore.h"
+#include "PcapCompare.h"
 
 //捕获ctrl+c
 void sigend_handler_abort(int sig)
@@ -62,6 +64,8 @@ int main(int argc, char **argv)
     }
     chw::Logger::Instance().setWriter(std::make_shared<chw::AsyncLogWriter>());
 
+	PrintD("Input conditions:");
+
 	if(gConfigCmd.filter != nullptr)
 	{
 		FilterCondition fc;
@@ -73,11 +77,26 @@ int main(int argc, char **argv)
         JsonCondition jc;
         jc.ParseJson(gConfigCmd.json);
     }
+	
+	PrintD("\nOutput results:");
+
+	// 比对模式
+	if(gConfigCmd.bCmp == true)
+	{
+		if(gConfigCmd.file1 == nullptr || gConfigCmd.file2 == nullptr)
+		{
+        	PrintD("error: compare model, invalid file1 or file2.");
+			chw::CmdLineParse::Instance().printf_help();
+			exit(1);
+		}
+		PcapCompare::Instance().CompareFile();
+	}
 
     if(gConfigCmd.file != nullptr)
     {
         PcapParse pp;
-        pp.parse_file(gConfigCmd.file);
+		chw::ComMatchBuf p;
+        pp.parse_file(gConfigCmd.file,p);
     }
     else
     {
@@ -87,6 +106,7 @@ int main(int argc, char **argv)
 
     chw::SignalCatch::Instance().CustomAbort(SIG_DFL);
     chw::SignalCatch::Instance().CustomCrash(SIG_DFL);
-    
-    return 0;
+
+
+    exit(0); 
 }

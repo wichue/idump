@@ -19,17 +19,20 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
         {"file", required_argument, NULL, 'f'},
         {"save", required_argument, NULL, 's'},
         {"filter", required_argument, NULL, 'g'},
-        {"more", no_argument, NULL, 'm'},
+        {"compare", no_argument, NULL, 'c'},
         {"max", required_argument, NULL, 'n'},
         {"json", required_argument, NULL, 'j'},
+        {"file1", required_argument, NULL, 'a'},
+        {"file2", required_argument, NULL, 'b'},
+        {"start", required_argument, NULL, 'k'},
+        {"end", required_argument, NULL, 'l'},
         {NULL, 0, NULL, 0}
     };
     int flag;
    
-    while ((flag = getopt_long(argc, argv, "hvf:s:g:mn:j:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "hvf:s:g:mn:j:ca:b:k:l:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'f':
-                PrintD("file name:%s\n", optarg);
                 gConfigCmd.file = optarg;
                 break;
             case 'p':
@@ -37,18 +40,30 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
                 break;
             case 's':
                 gConfigCmd.save = optarg;
-                PrintD("save name:%s\n", gConfigCmd.save);
                 break;
             case 'j':
-                PrintD("json name:%s\n", gConfigCmd.json);
                 gConfigCmd.json = optarg;
                 break;
             case 'n':
                 gConfigCmd.max = atoi(optarg);
                 break;
             case 'g':
-                PrintD("filter cond:%s\n", optarg);
                 gConfigCmd.filter = optarg;
+                break;
+            case 'c':
+                gConfigCmd.bCmp = true;
+                break;
+            case 'a':
+                gConfigCmd.file1 = optarg;
+                break;
+            case 'b':
+                gConfigCmd.file2 = optarg;
+                break;
+            case 'k':
+                gConfigCmd.start = atoi(optarg);
+                break;
+            case 'l':
+                gConfigCmd.end = atoi(optarg);
                 break;
                 
        

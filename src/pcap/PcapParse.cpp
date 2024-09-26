@@ -13,7 +13,7 @@
 #include "MemoryHandle.h"
 #include "GlobalValue.h"
 
-void PcapParse::parse_file(const char* filename)
+void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
 {
     struct stat st;
     if (stat(filename, &st))
@@ -31,6 +31,13 @@ void PcapParse::parse_file(const char* filename)
     }
 
     char *buf = (char*)malloc(fileSize + 1);
+	if(gConfigCmd.bCmp == true)
+	{
+		if(cmpbuf.first == true)
+		{
+    		cmpbuf.buf = (char*)malloc(fileSize + 1);
+		}
+	}
 
     FILE* fp = fopen(filename, "r");
     if (!fp)
@@ -46,9 +53,14 @@ void PcapParse::parse_file(const char* filename)
     // pcap 文件头
     chw::pcap_file_header* fileHeader = (chw::pcap_file_header*)(buf + offset);
     offset += sizeof(chw::pcap_file_header);
-    PrintD("pcap file - magic:%#x version:%d.%d,snaplen:%u", fileHeader->magic, fileHeader->version_major, fileHeader->version_minor,fileHeader->snaplen);
+	
+	if(gConfigCmd.bCmp == false)
+	{
+    	PrintD("pcap file - magic:%#x version:%d.%d,snaplen:%u", fileHeader->magic, fileHeader->version_major, fileHeader->version_minor,fileHeader->snaplen);
+    	PrintD("No.     time                    Source                          Destination                     protocol  caplen  desc      ");
+	}
 
-    resolve_each_frame(fileSize,offset,buf);
+    resolve_each_frame(filename,fileSize,offset,buf, cmpbuf);
 
     if (buf)
     {
@@ -65,10 +77,8 @@ void PcapParse::parse_file(const char* filename)
  * @param buf       pcap文件buf
  * @return uint32_t 
  */
-uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf)
+uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, size_t offset, char* buf ,chw::ComMatchBuf& cmpbuf)
 {
-    PrintD("No.     time                    Source                          Destination                     protocol  caplen  desc      ");
-
     size_t proto_offset = 0;//以太头偏移
     mPackIndex = 0;//抓包帧序号
 	uint32_t match_index = 0;
@@ -168,26 +178,59 @@ uint32_t PcapParse::resolve_each_frame(size_t fileSize, size_t offset, char* buf
         }
 		match_index ++;
 
+		// 比对模式
+		if(gConfigCmd.bCmp == true)
+		{
+			if(gConfigCmd.start >= pcapHeader->caplen || gConfigCmd.end >= pcapHeader->caplen
+			|| gConfigCmd.start + gConfigCmd.end >= pcapHeader->caplen)
+			{
+				PrintD("file:%s,too big compare start or end,start=%u,end=%u,caplen=%u,ignore pkt(%u).",filename,gConfigCmd.start,gConfigCmd.end,pcapHeader->caplen,mPackIndex);
+				continue;
+			}
 
-        //输出日志
-        //No.       time                          Source          Destination     protocol  len       desc      
-        PrintD("%-8u%-24s%-32s%-32s%-10s%-8u%-10s"
-        ,mPackIndex
-        ,chw::getTimeStr("%Y-%m-%d %H:%M:%S",time_t(pcapHeader->ts.tv_sec)).c_str()
-        ,str_Source.c_str()
-        ,str_Destination.c_str()
-        ,str_Protocol.c_str()
-        ,pcapHeader->caplen
-        ,desc.c_str());
+			uint32_t match_len = pcapHeader->caplen - gConfigCmd.start - gConfigCmd.end;
+			if(cmpbuf.first == true)
+			{
+				_RAM_CPY_(cmpbuf.buf + cmpbuf.size, match_len,buf + proto_offset + gConfigCmd.start,match_len);
+			}
+			cmpbuf.size += match_len; 
+			if(cmpbuf.first == false)
+			{
+				if(cmpbuf.size >= cmpbuf.uDiff)
+				{
+//todo
+				}
+			}
+		}
+		else
+		{
+       		//输出日志
+	        //No.       time                          Source          Destination     protocol  len       desc      
+	        PrintD("%-8u%-24s%-32s%-32s%-10s%-8u%-10s"
+	        ,mPackIndex
+	        ,chw::getTimeStr("%Y-%m-%d %H:%M:%S",time_t(pcapHeader->ts.tv_sec)).c_str()
+    	    ,str_Source.c_str()
+	        ,str_Destination.c_str()
+    	    ,str_Protocol.c_str()
+	        ,pcapHeader->caplen
+    	    ,desc.c_str());
 
-        if(gConfigCmd.max > 0)
-        {
-            chw::PrintBuffer(buf + proto_offset, pcapHeader->caplen, ayz);
-        }
+        	if(gConfigCmd.max > 0)
+	        {
+    	        chw::PrintBuffer(buf + proto_offset, pcapHeader->caplen, ayz);
+	        }
+		}
     }
 
-	PrintD("total package count:%u", mPackIndex);
-    PrintD("match package count:%u", match_index);
+	if(gConfigCmd.bCmp == true)
+	{
+		PrintD("file:%s,total count:%u;cond match count:%u;compare total size=%u(byte).",filename,mPackIndex,match_index,cmpbuf.size);
+	}
+	else
+	{
+		PrintD("total package count:%u", mPackIndex);
+   	 	PrintD("match package count:%u", match_index);
+	}
 
     return chw::success;
 }

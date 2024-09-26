@@ -370,6 +370,16 @@ static const char *LOG_CONST_TABLE[][3] = {
         {"\033[41;37m", "\033[31m", "E"}};	//red
 #endif
 
+typedef enum _COLOR_RULE {
+	COLOR_ETH_TYPE,
+	COLOR_NETWORK_HDR,
+	COLOR_TRANSPORT_HDR,
+	COLOR_JSON_COND,
+	COLOR_NULL
+}COLOR_RULE;
+
+const uint32_t COLOR_LEN_RULE = sizeof(LOG_CONST_TABLE[2][1]);
+const uint32_t COLOR_LEN_CLEAR= sizeof(CLEAR_COLOR);
 void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
 {
     if (NULL == pBuff || 0 == nLen)
@@ -410,7 +420,7 @@ void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
     _RAM_SET_(szHex_all,gConfigCmd.max * 4,0,gConfigCmd.max * 4);
     uint32_t uIndex = 0;
     uint32_t uCount = 0;
-	uint32_t uPrinted = 0;
+	COLOR_RULE color = COLOR_NULL;
 
     for (uint32_t i=0; i<nLen; ++i)
     {
@@ -439,64 +449,112 @@ void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
         uCount++;
 		if(uCount >= gConfigCmd.max)
         {
+			if(color != COLOR_NULL)
+			{
+				memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
+				color = COLOR_NULL;
+				uIndex += 4;
+			}
             szHex_all[uIndex++] = '.';
             szHex_all[uIndex++] = '.';
             szHex_all[uIndex++] = '.';
+
             break;
         }
 
-		// 输出到命令行使用颜色，输出到日志不使用颜色
-    	if(gConfigCmd.save == nullptr)
+		if(gConfigCmd.save == nullptr)
 		{
-			// 先输出目的MAC和源MAC，固定12字节
+			// JSON匹配条件添加颜色规则，优先级最高
+			if(i == ayz.json_start - 1)
+			{
+				if(color != COLOR_NULL)
+				{
+					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
+					color = COLOR_NULL;
+					uIndex += 4;
+				}
+				memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[4][1],COLOR_LEN_RULE);
+				uIndex += 5;
+				color = COLOR_JSON_COND;
+			}
+			if(i == ayz.json_end)
+			{
+
+				if(color == COLOR_JSON_COND)
+				{
+					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
+					color = COLOR_NULL;
+					uIndex += 4;
+				}
+			}
+			// ETH类型，固定2字节
 			if(i == 11)
 			{
-				uPrinted = uIndex;
-    			PrintNCR("%s", szHex_all);
+				if(color == COLOR_NULL)
+				{
+					memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[2][1],COLOR_LEN_RULE);
+
+					uIndex += 5;
+					color = COLOR_ETH_TYPE;
+				}
 			}
-			// 网络层协议类型固定2字节
 			if(i == 13)
 			{
-				PrintNCR("%s",LOG_CONST_TABLE[2][1]);
-    			PrintNCR("%s", szHex_all + uPrinted);
-				PrintNCR("%s", CLEAR_COLOR);
-				uPrinted = uIndex;
+				if(color == COLOR_ETH_TYPE)
+				{
+					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
+					color = COLOR_NULL;
+					uIndex += 4;
+				}
 			}
-			// 网络层协议头
+
+			// 网络层头部添加颜色规则
+			if(i >= 13 && i < 13 + net_hdrlen)
+			{
+				if(color == COLOR_NULL)
+				{
+					memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[0][1],COLOR_LEN_RULE);
+
+					uIndex += 5;
+					color = COLOR_NETWORK_HDR;
+				}
+			}
 			if(i == 13 + net_hdrlen)
 			{
-				PrintNCR("%s",LOG_CONST_TABLE[0][1]);
-    			PrintNCR("%s", szHex_all + uPrinted);
-				PrintNCR("%s", CLEAR_COLOR);
-				uPrinted = uIndex;
+				if(color == COLOR_NETWORK_HDR)
+				{
+					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
+					color = COLOR_NULL;
+					uIndex += 4;
+				}
 			}
-			// 传输层协议头
+
+			// 传输层头部添加颜色规则
+			if(i == 13 + net_hdrlen)
+			{
+				if(color == COLOR_NULL)
+				{
+					memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[1][1],COLOR_LEN_RULE);
+
+					uIndex += 5;
+					color = COLOR_NETWORK_HDR;
+				}
+			}
 			if(i == 13 + net_hdrlen + trans_hdrlen)
 			{
-				PrintNCR("%s",LOG_CONST_TABLE[1][1]);
-    			PrintNCR("%s", szHex_all + uPrinted);
-				PrintNCR("%s", CLEAR_COLOR);
-				uPrinted = uIndex;
-			}
-			// json匹配条件,只对应用层的数据使用颜色
-			uint32_t pre_app_len = 14 + net_hdrlen + trans_hdrlen;// 应用层数据前面的长度（以太头 + 网络层头 + 传输层头的长度）
-//			PrintD("json_start=%u,json_end=%u,i=%u,pre_app_len=%u",ayz.json_start,ayz.json_end,i,pre_app_len);
-				if(i == ayz.json_end
-				&& ayz.json_start > pre_app_len - 1)
+				if(color == COLOR_NETWORK_HDR)
 				{
-					std::string msg(szHex_all,ayz.json_start - pre_app_len - 1);
-					uPrinted += uPrinted + ayz.json_start - pre_app_len - 1;
-	    			PrintNCR("%s", msg.c_str());
-					PrintNCR("%s",LOG_CONST_TABLE[4][1]);
-	    			PrintNCR("%s", szHex_all + uPrinted);
-					PrintNCR("%s", CLEAR_COLOR);
-					uPrinted = uIndex;
+					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
+					color = COLOR_NULL;
+					uIndex += 4;
 				}
+			}
+
 		}
     }
     szHex_all[uIndex] = '\0';
 
-    PrintD("%s", szHex_all + uPrinted);
+    PrintD("%s", szHex_all);
 }
 
 bool StrIsNull(const char *value)

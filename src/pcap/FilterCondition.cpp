@@ -9,7 +9,7 @@
 void FilterCondition::ParseFilter(char* filter)
 {
     std::string filter_trim = chw::replaceAll(filter," ","");
-    PrintD("filter_trim=%s\n",filter_trim.c_str());
+    PrintD("filter_trim=%s",filter_trim.c_str());
 
     //1.解析与或条件
     std::vector<std::string> msg_or = chw::split(filter_trim,"||");

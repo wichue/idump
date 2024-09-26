@@ -29,7 +29,8 @@ SET(SRCS
     ${PREFIX}/src/GlobalValue.cpp
     ${PREFIX}/src/pcap/PcapParse.cpp
     ${PREFIX}/src/pcap/JsonCondition.cpp
-    ${PREFIX}/src/pcap/FilterCondition.cpp
+	${PREFIX}/src/pcap/FilterCondition.cpp
+    ${PREFIX}/src/pcap/PcapCompare.cpp
 )
 
 SET(SRCS ${SRCS}

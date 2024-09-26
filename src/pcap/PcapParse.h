@@ -9,7 +9,7 @@ public:
     PcapParse() = default;
     ~PcapParse() = default;
 
-    void parse_file(const char* filename);
+    void parse_file(const char* filename, chw::ComMatchBuf& cmpbuf);
 private:
 
     /**
@@ -20,7 +20,7 @@ private:
      * @param buf       pcap文件buf
      * @return uint32_t 成功返回chw::success,失败返回chw::fail
      */
-    uint32_t resolve_each_frame(size_t fileSize, size_t offset, char* buf);
+    uint32_t resolve_each_frame(const char* filename, size_t fileSize, size_t offset, char* buf, chw::ComMatchBuf& cmpbuf);
 
     /**
      * @brief 对每一帧匹配JSON文件读取的条件
