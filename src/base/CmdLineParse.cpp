@@ -20,7 +20,7 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
         {"save", required_argument, NULL, 's'},
         {"filter", required_argument, NULL, 'g'},
         {"compare", no_argument, NULL, 'c'},
-        {"max", required_argument, NULL, 'n'},
+        {"max", required_argument, NULL, 'm'},
         {"json", required_argument, NULL, 'j'},
         {"file1", required_argument, NULL, 'a'},
         {"file2", required_argument, NULL, 'b'},
@@ -30,13 +30,10 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
     };
     int flag;
    
-    while ((flag = getopt_long(argc, argv, "hvf:s:g:mn:j:ca:b:k:l:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "hvf:s:g:m:j:ca:b:k:l:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'f':
                 gConfigCmd.file = optarg;
-                break;
-            case 'p':
-                PrintD("p:%d\n", atoi(optarg));
                 break;
             case 's':
                 gConfigCmd.save = optarg;
@@ -44,7 +41,7 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
             case 'j':
                 gConfigCmd.json = optarg;
                 break;
-            case 'n':
+            case 'm':
                 gConfigCmd.max = atoi(optarg);
                 break;
             case 'g':
@@ -65,11 +62,17 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
             case 'l':
                 gConfigCmd.end = atoi(optarg);
                 break;
+            case 'h':
+				help();
+                break;
+            case 'v':
+				version();
+				exit(0);
+                break;
                 
        
             default:
-                // fprintf(stderr, "\n");
-                // usage();
+				printf("Incorrect parameter option, --help for help.\n");
                 exit(1);
         }
     }
@@ -79,7 +82,41 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
 
 int32_t CmdLineParse::printf_help()
 {
+	printf("--help for usage method.");
     return 0;
+}
+
+void CmdLineParse::help()
+{
+	version();
+
+	printf(
+			"	--help(-h) for help.\n"
+			"	--version(-v) for version info.\n\n"
+
+			"	--file(-f), pcap file to parse,default model,without -c.\n"
+			"	--json(-j), json match condition,from file.\n"
+			"	--filter(-f), cmd line filter condition,like wireshark.\n"
+			"	--save(-s), log output to file,without this option,log output to console.\n"
+			"	--max(-m), print msg by bytes up to max,without this option or 0,do not print msg details.\n\n"
+
+			"	--compare(-c),compare by byte,must option:file1,file2,can use --json and --filter conditions.\n"
+			"	--file1(-a),one of pcap file for compare.\n"
+			"	--file2(-b),one of pcap file for compare.\n"
+			"	--start(-k), compare model,the begin offset of msg,without this option begin offset is 0.\n"
+			"	--end(-l), compare model,the end offset of msg,without this option end offset is 0\n."
+			);
+
+	exit(0);
+}
+
+void CmdLineParse::version()
+{
+#ifdef WIN32
+	printf("idump version 1.0.0 for windows.  Welcome to visit url:https://github.com/wichue/idump\n");
+#else
+	printf("idump version 1.0.0 for linux.  Welcome to visit url:https://github.com/wichue/idump\n");
+#endif
 }
 
 }//namespace chw

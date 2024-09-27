@@ -9,15 +9,16 @@ public:
     PcapParse() = default;
     ~PcapParse() = default;
 
+    void open_file(const char* filename,char*& buf);
     void parse_file(const char* filename, chw::ComMatchBuf& cmpbuf);
 private:
 
     /**
      * @brief pcap逐帧解析
      * 
-     * @param fileSize  pcap文件总的字节长度
-     * @param offset    pcap偏移
-     * @param buf       pcap文件buf
+     * @param fileSize  [in]pcap文件总的字节长度
+     * @param offset    [in]pcap偏移
+     * @param buf       [in]pcap文件buf
      * @return uint32_t 成功返回chw::success,失败返回chw::fail
      */
     uint32_t resolve_each_frame(const char* filename, size_t fileSize, size_t offset, char* buf, chw::ComMatchBuf& cmpbuf);

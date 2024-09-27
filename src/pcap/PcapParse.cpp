@@ -13,37 +13,44 @@
 #include "MemoryHandle.h"
 #include "GlobalValue.h"
 
+void PcapParse::open_file(const char* filename,char*& buf)
+{
+
+}
 void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
 {
     struct stat st;
     if (stat(filename, &st))
     {
-        PrintD("stat file %s failed, errno=%d errmsg=%s\n", filename, errno, strerror(errno));
-        return;
+        PrintD("stat file %s failed, errno=%d errmsg=%s", filename, errno, strerror(errno));
+        exit(1);
     }
 
     size_t fileSize = st.st_size;
 
     if (!fileSize)
     {
-        PrintD("file is empty!\n");
-        return;
+        PrintD("file is empty:%s",filename);
+        exit(1);
     }
 
-    char *buf = (char*)malloc(fileSize + 1);
+	char* buf = nullptr;
+	try {
+	    buf = (char*)_RAM_NEW_(fileSize + 1);
+	} catch(std::bad_alloc) {
+		PrintD("malloc buf failed, size=%u",fileSize + 1);
+		exit(1);
+	}
 	if(gConfigCmd.bCmp == true)
 	{
-		if(cmpbuf.first == true)
-		{
-    		cmpbuf.buf = (char*)malloc(fileSize + 1);
-		}
+		cmpbuf.buf = buf;
 	}
 
     FILE* fp = fopen(filename, "r");
     if (!fp)
     {
-        PrintD("open file %s failed, errno=%d errmsg=%s\n", filename, errno, strerror(errno));
-        return;
+        PrintD("open file %s failed, errno=%d errmsg=%s", filename, errno, strerror(errno));
+        exit(1);
     }
     fread(buf, sizeof(char), fileSize, fp);
     fclose(fp);
@@ -62,7 +69,7 @@ void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
 
     resolve_each_frame(filename,fileSize,offset,buf, cmpbuf);
 
-    if (buf)
+    if (buf && gConfigCmd.bCmp == false)
     {
         free(buf);
         buf = NULL;
@@ -184,10 +191,11 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 			if(gConfigCmd.start >= pcapHeader->caplen || gConfigCmd.end >= pcapHeader->caplen
 			|| gConfigCmd.start + gConfigCmd.end >= pcapHeader->caplen)
 			{
-				PrintD("file:%s,too big compare start or end,start=%u,end=%u,caplen=%u,ignore pkt(%u).",filename,gConfigCmd.start,gConfigCmd.end,pcapHeader->caplen,mPackIndex);
+				PrintD("warn,file:%s,too big compare start or end,start=%u,end=%u,caplen=%u,ignore pkt(%u).",filename,gConfigCmd.start,gConfigCmd.end,pcapHeader->caplen,mPackIndex);
 				continue;
 			}
 
+			cmpbuf.compare_count ++;
 			uint32_t match_len = pcapHeader->caplen - gConfigCmd.start - gConfigCmd.end;
 			if(cmpbuf.first == true)
 			{
@@ -198,7 +206,9 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 			{
 				if(cmpbuf.size >= cmpbuf.uDiff)
 				{
-//todo
+					uint32_t uCurrDiff = pcapHeader->caplen - (cmpbuf.size - cmpbuf.uDiff);
+					PrintD("file:%s,diff happend frame number:%u,byte number:%u.", filename, mPackIndex, uCurrDiff);
+					break;
 				}
 			}
 		}
@@ -224,7 +234,10 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 
 	if(gConfigCmd.bCmp == true)
 	{
-		PrintD("file:%s,total count:%u;cond match count:%u;compare total size=%u(byte).",filename,mPackIndex,match_index,cmpbuf.size);
+		if(cmpbuf.first == true)
+		{
+			PrintD("file:%s,total count:%u;condition match count:%u;compare count:%u,compare total size=%u(byte).",filename,mPackIndex,match_index,cmpbuf.compare_count,cmpbuf.size);	
+		}
 	}
 	else
 	{

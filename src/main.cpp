@@ -28,6 +28,8 @@ void sigend_handler_crash(int sig)
     printf("catch crash signal:%d,exit now.\n",sig);
     chw_assert();
 }
+
+//todo:windows
 /**
  * @brief 
  * 功能：
@@ -86,22 +88,26 @@ int main(int argc, char **argv)
 		if(gConfigCmd.file1 == nullptr || gConfigCmd.file2 == nullptr)
 		{
         	PrintD("error: compare model, invalid file1 or file2.");
-			chw::CmdLineParse::Instance().printf_help();
+			PrintD("--help for usage method.");
 			exit(1);
 		}
 		PcapCompare::Instance().CompareFile();
 	}
+	else
+	{
+	    if(gConfigCmd.file != nullptr)
+    	{
+	        PcapParse pp;
+			chw::ComMatchBuf p;
+        	pp.parse_file(gConfigCmd.file,p);
+	    }
+    	else
+	    {
+			PrintD("--help for usage method.");
+			exit(1);
+	    }
+	}
 
-    if(gConfigCmd.file != nullptr)
-    {
-        PcapParse pp;
-		chw::ComMatchBuf p;
-        pp.parse_file(gConfigCmd.file,p);
-    }
-    else
-    {
-        chw::CmdLineParse::Instance().printf_help();
-    }
 
 
     chw::SignalCatch::Instance().CustomAbort(SIG_DFL);

@@ -269,11 +269,11 @@ enum chw_ret{
 };
 
 struct ComMatchBuf{
-	char* buf;
-	size_t size;
-	bool first;
-	uint32_t uDiff;
-	uint32_t compare_count;
+	char* buf;// 满足匹配条件的待比对的buffer
+	size_t size;// buffer的长度
+	bool first;// 第一次比对会找出buf中不同字节的的序号，第二次比对会找出不同字节的帧序号和帧的第多少个字节
+	uint32_t uDiff;// 第一次比对找出的不同字节序号
+	uint32_t compare_count;// 参与比对帧的数量，既要满足匹配条件，也要满足start和end的长度
 
 	ComMatchBuf()
 	{

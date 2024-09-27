@@ -14,7 +14,9 @@ public:
 
     int32_t parse_arguments(int argc, char **argv);
     int32_t printf_help();
-
+private:
+	void help();
+	void version();
 };
 
 }//namespace chw
