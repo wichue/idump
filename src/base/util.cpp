@@ -554,7 +554,7 @@ void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
     }
     szHex_all[uIndex] = '\0';
 
-    PrintD("%s", szHex_all);
+    PrintD("%s\n", szHex_all);
 }
 
 bool StrIsNull(const char *value)

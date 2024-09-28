@@ -25,10 +25,9 @@ vim -b ens33.pcap
 INSTANCE_IMP(PcapCompare)
 
 static chw::Semaphore sem;
-void ParseThread(chw::ComMatchBuf* mbuf,char* file)
+void ParseThread(PcapParse* cap,char* file)
 {
-	PcapParse pp;
-	pp.parse_file(file,*mbuf);
+	cap->parse_file(file);
 
 	sem.post();
 }
@@ -36,8 +35,11 @@ void ParseThread(chw::ComMatchBuf* mbuf,char* file)
 
 void PcapCompare::CompareFile()
 {
-	std::thread t1(ParseThread,&_buffer1,gConfigCmd.file1);
-	std::thread t2(ParseThread,&_buffer2,gConfigCmd.file2);
+	PcapParse cap1;
+	PcapParse cap2;
+
+	std::thread t1(ParseThread,&cap1,gConfigCmd.file1);
+	std::thread t2(ParseThread,&cap2,gConfigCmd.file2);
 	t1.detach();
 	t2.detach();
 
@@ -45,19 +47,17 @@ void PcapCompare::CompareFile()
     sem.wait();
 
 	//todo:数据量大可以多开几个线程分段比较
+	//找到第一个不同的字节停止
 	int64_t iDiffIndex = -1;
-	uint32_t uMinlen = _buffer1.size < _buffer2.size ? _buffer1.size : _buffer2.size;
+	uint32_t uMinlen = cap1._cmpbuf.size < cap2._cmpbuf.size ? cap1._cmpbuf.size : cap2._cmpbuf.size;
 	for(uint32_t index=0;index<uMinlen;index++)
 	{
-		if(_buffer1.buf[index] != _buffer2.buf[index])
+		if(cap1._cmpbuf.buf[index] != cap2._cmpbuf.buf[index])
 		{
 			iDiffIndex = index;
 			break;
 		}
 	}
-
-	_RAM_DEL_(_buffer1.buf);
-	_RAM_DEL_(_buffer2.buf);
 
 	if(iDiffIndex < 0 )
 	{
@@ -65,21 +65,18 @@ void PcapCompare::CompareFile()
 		exit(0);
 	}
 
-	_buffer1.first = false;
-	_buffer1.size = 0;
-	_buffer1.uDiff = iDiffIndex;
-	_buffer2.first = false;
-	_buffer2.size = 0;
-	_buffer2.uDiff = iDiffIndex;
+	cap1._cmpbuf.first = false;
+	cap1._cmpbuf.size = 0;
+	cap1._cmpbuf.uDiff = iDiffIndex;
+	cap2._cmpbuf.first = false;
+	cap2._cmpbuf.size = 0;
+	cap2._cmpbuf.uDiff = iDiffIndex;
 
-	std::thread t3(ParseThread,&_buffer1,gConfigCmd.file1);
-	std::thread t4(ParseThread,&_buffer2,gConfigCmd.file2);
+	std::thread t3(ParseThread,&cap1,gConfigCmd.file1);
+	std::thread t4(ParseThread,&cap2,gConfigCmd.file2);
 	t3.detach();
 	t4.detach();
 
     sem.wait();
     sem.wait();
-
-	_RAM_DEL_(_buffer1.buf);
-	_RAM_DEL_(_buffer2.buf);
 }

@@ -104,7 +104,7 @@ void CmdLineParse::help()
 			"	--file1(-a),one of pcap file for compare.\n"
 			"	--file2(-b),one of pcap file for compare.\n"
 			"	--start(-k), compare model,the begin offset of msg,without this option begin offset is 0.\n"
-			"	--end(-l), compare model,the end offset of msg,without this option end offset is 0\n."
+			"	--end(-l), compare model,the end offset of msg,without this option end offset is 0.\n"
 			);
 
 	exit(0);
@@ -113,9 +113,9 @@ void CmdLineParse::help()
 void CmdLineParse::version()
 {
 #ifdef WIN32
-	printf("idump version 1.0.0 for windows.  Welcome to visit url:https://github.com/wichue/idump\n");
+	printf("idump version 1.0.0 for windows.  Welcome to visit url: https://github.com/wichue/idump\n");
 #else
-	printf("idump version 1.0.0 for linux.  Welcome to visit url:https://github.com/wichue/idump\n");
+	printf("idump version 1.0.0 for linux.  Welcome to visit url: https://github.com/wichue/idump\n");
 #endif
 }
 

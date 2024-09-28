@@ -98,8 +98,7 @@ int main(int argc, char **argv)
 	    if(gConfigCmd.file != nullptr)
     	{
 	        PcapParse pp;
-			chw::ComMatchBuf p;
-        	pp.parse_file(gConfigCmd.file,p);
+        	pp.parse_file(gConfigCmd.file);
 	    }
     	else
 	    {

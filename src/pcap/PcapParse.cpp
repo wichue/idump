@@ -13,12 +13,25 @@
 #include "MemoryHandle.h"
 #include "GlobalValue.h"
 
-void PcapParse::open_file(const char* filename,char*& buf)
+PcapParse::PcapParse()
 {
-
+    _filename = nullptr;
+    _buf = nullptr;
+    _fileSize = 0;
 }
-void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
+
+PcapParse::~PcapParse()
 {
+    if(_buf != nullptr)
+    {
+        _RAM_DEL_(_buf);
+    }
+}
+
+void PcapParse::parse_file(char* filename)
+{
+    _filename = filename;
+
     struct stat st;
     if (stat(filename, &st))
     {
@@ -26,24 +39,27 @@ void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
         exit(1);
     }
 
-    size_t fileSize = st.st_size;
+    _fileSize = st.st_size;
 
-    if (!fileSize)
+    if (!_fileSize)
     {
         PrintD("file is empty:%s",filename);
         exit(1);
     }
 
-	char* buf = nullptr;
-	try {
-	    buf = (char*)_RAM_NEW_(fileSize + 1);
-	} catch(std::bad_alloc) {
-		PrintD("malloc buf failed, size=%u",fileSize + 1);
-		exit(1);
-	}
+	if(_buf == nullptr)
+    {
+	    try {
+	        _buf = (char*)_RAM_NEW_(_fileSize + 1);
+	    } catch(std::bad_alloc) {
+	    	PrintD("malloc buf failed, size=%u",_fileSize + 1);
+	    	exit(1);
+	    }
+    }
+
 	if(gConfigCmd.bCmp == true)
 	{
-		cmpbuf.buf = buf;
+		_cmpbuf.buf = _buf;
 	}
 
     FILE* fp = fopen(filename, "r");
@@ -52,13 +68,13 @@ void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
         PrintD("open file %s failed, errno=%d errmsg=%s", filename, errno, strerror(errno));
         exit(1);
     }
-    fread(buf, sizeof(char), fileSize, fp);
+    fread(_buf, sizeof(char), _fileSize, fp);
     fclose(fp);
 
 
     size_t offset = 0;
     // pcap 文件头
-    chw::pcap_file_header* fileHeader = (chw::pcap_file_header*)(buf + offset);
+    chw::pcap_file_header* fileHeader = (chw::pcap_file_header*)(_buf + offset);
     offset += sizeof(chw::pcap_file_header);
 	
 	if(gConfigCmd.bCmp == false)
@@ -67,13 +83,7 @@ void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
     	PrintD("No.     time                    Source                          Destination                     protocol  caplen  desc      ");
 	}
 
-    resolve_each_frame(filename,fileSize,offset,buf, cmpbuf);
-
-    if (buf && gConfigCmd.bCmp == false)
-    {
-        free(buf);
-        buf = NULL;
-    }
+    resolve_each_frame(filename,_fileSize,offset,_buf);
 }
 
 /**
@@ -84,7 +94,7 @@ void PcapParse::parse_file(const char* filename, chw::ComMatchBuf& cmpbuf)
  * @param buf       pcap文件buf
  * @return uint32_t 
  */
-uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, size_t offset, char* buf ,chw::ComMatchBuf& cmpbuf)
+uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, size_t offset, char* buf)
 {
     size_t proto_offset = 0;//以太头偏移
     mPackIndex = 0;//抓包帧序号
@@ -195,18 +205,18 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 				continue;
 			}
 
-			cmpbuf.compare_count ++;
+			_cmpbuf.compare_count ++;
 			uint32_t match_len = pcapHeader->caplen - gConfigCmd.start - gConfigCmd.end;
-			if(cmpbuf.first == true)
+			if(_cmpbuf.first == true)
 			{
-				_RAM_CPY_(cmpbuf.buf + cmpbuf.size, match_len,buf + proto_offset + gConfigCmd.start,match_len);
+				_RAM_CPY_(_cmpbuf.buf + _cmpbuf.size, match_len,buf + proto_offset + gConfigCmd.start,match_len);
 			}
-			cmpbuf.size += match_len; 
-			if(cmpbuf.first == false)
+			_cmpbuf.size += match_len; 
+			if(_cmpbuf.first == false)
 			{
-				if(cmpbuf.size >= cmpbuf.uDiff)
+				if(_cmpbuf.size >= _cmpbuf.uDiff)
 				{
-					uint32_t uCurrDiff = pcapHeader->caplen - (cmpbuf.size - cmpbuf.uDiff);
+					uint32_t uCurrDiff = pcapHeader->caplen - (_cmpbuf.size - _cmpbuf.uDiff);
 					PrintD("file:%s,diff happend frame number:%u,byte number:%u.", filename, mPackIndex, uCurrDiff);
 					break;
 				}
@@ -234,9 +244,9 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 
 	if(gConfigCmd.bCmp == true)
 	{
-		if(cmpbuf.first == true)
+		if(_cmpbuf.first == true)
 		{
-			PrintD("file:%s,total count:%u;condition match count:%u;compare count:%u,compare total size=%u(byte).",filename,mPackIndex,match_index,cmpbuf.compare_count,cmpbuf.size);	
+			PrintD("file:%s,total count:%u;condition match count:%u;compare count:%u,compare total size=%u(byte).",filename,mPackIndex,match_index,_cmpbuf.compare_count,_cmpbuf.size);	
 		}
 	}
 	else

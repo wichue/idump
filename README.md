@@ -5,6 +5,7 @@
  使用wireshark的过滤习惯
  frame.len==60
  frame.cap_len==60
+ frame.number==20
 
  eth
  eth.dst
