@@ -1,9 +1,14 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #ifndef UTIL_UTIL_H_
 #define UTIL_UTIL_H_
 
 #include <memory>// for std::shared_ptr
 #include <vector>
 #include <netinet/in.h>// for in_addr in6_addr
+#include <time.h>
+#include <sys/time.h>
 #include <sstream>
 #include "ComProtocol.h"
 
@@ -25,6 +30,18 @@ namespace chw {
 void setThreadName(const char *name);
 
 /**
+ * @brief TimeSecond
+ * @return 从1970年到现在过去的秒数
+ */
+time_t TimeSecond();
+
+/**
+ * @brief TimeSecond
+ * @return 从1970年到现在过去的秒数,精确到6位小数点，微秒
+ */
+double TimeSecond_dob();
+
+/**
  * @brief Get the Thread Name object
  * 
  * @return std::string 
@@ -33,14 +50,14 @@ std::string getThreadName();
 
 /**
  * 根据unix时间戳获取本地时间
- * @param sec unix时间戳
+ * @param [in]sec unix时间戳
  * @return tm结构体
  */
 struct tm getLocalTime(time_t sec);
 
 /**
  * 获取时间字符串
- * @param fmt 时间格式，譬如%Y-%m-%d %H:%M:%S
+ * @param fmt [in]时间格式，譬如%Y-%m-%d %H:%M:%S
  * @return 时间字符串
  */
 std::string getTimeStr(const char *fmt,time_t time = 0);
@@ -55,7 +72,7 @@ bool isIP(const char *str);
 /**
  * @brief ipv4地址转换为字符串
  * 
- * @param addr  ip地址
+ * @param addr  [in]ip地址
  * @return std::string .分ip地址字符串
  */
 std::string sockaddr_ipv4(uint32_t addr);
@@ -63,7 +80,7 @@ std::string sockaddr_ipv4(uint32_t addr);
 /**
  * @brief ipv6地址转换为字符串
  * 
- * @param addr  ip地址
+ * @param addr  [in]ip地址
  * @return std::string :分ip地址字符串
  */
 std::string sockaddr_ipv6(uint8_t* addr);
@@ -89,7 +106,7 @@ int32_t host2addr_ipv6(const char* host, struct in6_addr& addr6);
 /**
  * @brief 内存mac地址转换为字符串
  * 
- * @param macAddress    mac地址buf
+ * @param macAddress    [in]mac地址buf
  * @return std::string  :分mac地址字符串
  */
 std::string MacBuftoStr(const unsigned char* mac_buf);
@@ -97,14 +114,7 @@ std::string MacBuftoStr(const unsigned char* mac_buf);
 /**
  * @brief :分mac地址字符串转换为6字节buf
  * 
- * @param charArray     [int]:分mac地址字符串
- * @param macAddress    [out]6字节长度buf
- */
-
-/**
- * @brief :分mac地址字符串转换为6字节buf
- * 
- * @param charArray     [int]:分mac地址字符串
+ * @param charArray     [in]:分mac地址字符串
  * @param macAddress    [out]6字节长度buf
  * @return uint32_t 成功返回chw::success,失败返回chw::fail
  */
@@ -132,8 +142,8 @@ std::string exeName(bool isExe = true);
 /**
  * @brief 字符串分割
  * 
- * @param s         输入字符串
- * @param delim     分隔符
+ * @param s        [in]输入字符串
+ * @param delim    [in]分隔符
  * @return std::vector<std::string> 分割得到的子字符串集
  */
 std::vector<std::string> split(const std::string& s, const char *delim);
@@ -141,28 +151,28 @@ std::vector<std::string> split(const std::string& s, const char *delim);
 /**
  * @brief 以16进制打印内存，两个字符表示一个字节，每一行固定字节数量，字节之间有空格
  * 
- * @param pBuff 内存
- * @param nLen  内存长度
+ * @param pBuff [in]内存
+ * @param nLen  [in]内存长度
  */
 void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz);
 
 /**
  * @brief 判断字符串是否为空
- * @param value 入参字符串
+ * @param value [in]入参字符串
  * @return true字符串为空，false字符串不为空
  */
 bool StrIsNull(const char *value);
 
 /**
  * @brief 将16进制字符转换为10进制
- * @param hex   16进制字符
+ * @param hex   [in]16进制字符
  * @return      转换后的10进制
  */
 unsigned char HextoInt(unsigned char hex);
 
 /**
  * @brief 16进制表示字符串转换成16进制内存buf ("0080"字符串 -> 查看内存是0080)
- * @param value 要转换的字符串
+ * @param value [in]要转换的字符串
  * @return      返回转换的结果
  */
 std::string StrHex2StrBuf(const char *value);
@@ -171,8 +181,8 @@ std::string StrHex2StrBuf(const char *value,char wild_card);
 
 /**
  * @brief 将内存buffer转换成16进制形式字符串(内存16进制0800->"0800"字符串)
- * @param value buffer
- * @param len   长度
+ * @param value [in]buffer
+ * @param len   [in]长度
  * @return      转换后的字符串
  */
 std::string HexBuftoString(const unsigned char *value, int len);
@@ -180,16 +190,15 @@ std::string HexBuftoString(const unsigned char *value, int len);
 /**
  * @brief 替换字符串中的子串
  * 
- * @param str   字符串
- * @param find  子串
- * @param rep   替换为的串
+ * @param str   [in]字符串
+ * @param find  [in]子串
+ * @param rep   [in]替换为的串
  * @return std::string 替换后的字符串
  */
 std::string replaceAll(const std::string& str, const std::string& find, const std::string& rep);
 
 // 模板函数：将string类型变量转换为常用的数值类型（此方法具有普遍适用性）
 // 遇到非数字字符停止，停止前没有数字字符则返回0
-
 template <class Type>
 Type String2Num(const std::string& str){
 	std::istringstream iss(str);
@@ -199,11 +208,52 @@ Type String2Num(const std::string& str){
 }
 
 
+/**
+ * @brief 取4字节整数的低4位，高28位补0，示例:100(...0110 0100)——>4(...0000 0100)
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int32_t int32_lowfour(int32_t num);
+
+/**
+ * @brief 取4字节整数的高4位，低28位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int32_t int32_highfour(int32_t num);
+
+/**
+ * @brief 取2字节整数的低4位，高12位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int16_t int16_lowfour(int16_t num);
+
+/**
+ * @brief 取2字节整数的高4位，低12位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int16_t int16_highfour(int16_t num);
+
+/**
+ * @brief 取1字节整数的低4位，高4位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int8_t int8_lowfour(int8_t num);
+
+/**
+ * @brief 取1字节整数的高4位，低4位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int8_t int8_highfour(int8_t num);
 
 //禁止拷贝基类

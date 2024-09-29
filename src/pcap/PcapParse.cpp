@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "PcapParse.h"
 #include <stdio.h>
 #include <errno.h>
@@ -12,6 +15,8 @@
 #include "Logger.h"
 #include "MemoryHandle.h"
 #include "GlobalValue.h"
+
+namespace chw {
 
 PcapParse::PcapParse()
 {
@@ -28,6 +33,11 @@ PcapParse::~PcapParse()
     }
 }
 
+/**
+ * @brief 解析pcap文件
+ * 
+ * @param filename	pcap文件路径
+ */
 void PcapParse::parse_file(char* filename)
 {
     _filename = filename;
@@ -89,10 +99,10 @@ void PcapParse::parse_file(char* filename)
 /**
  * @brief pcap逐帧解析
  * 
- * @param fileSize  pcap文件总的字节长度
- * @param offset    pcap偏移
- * @param buf       pcap文件buf
- * @return uint32_t 
+ * @param fileSize  [in]pcap文件总的字节长度
+ * @param offset    [in]pcap偏移
+ * @param buf       [in]pcap文件buf
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
  */
 uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, size_t offset, char* buf)
 {
@@ -261,8 +271,10 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 /**
  * @brief 对每一帧匹配JSON文件读取的条件
  * 
- * @param buf   帧buf
- * @param size  帧长度
+ * @param buf   [in]帧buf
+ * @param size  [in]帧长度
+ * @param start [out]匹配成功的开始位置,用于输出显示颜色
+ * @param end	[out]匹配成功的终止位置
  * @return std::string 匹配到的描述，没有匹配到则为空
  */
 std::string PcapParse::match_json(char* buf, size_t size, uint32_t& start, uint32_t& end)
@@ -303,7 +315,13 @@ std::string PcapParse::match_json(char* buf, size_t size, uint32_t& start, uint3
     return desc;
 }
 
-uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
+/**
+ * @brief 对每一帧获取的信息，匹配命令行--filter过滤条件
+ * 
+ * @param ayz	[in]解析获取的帧信息
+ * @return uint32_t 匹配成功返回chw::success,失败返回chw::fail
+ */
+uint32_t PcapParse::match_filter(const chw::ayz_info& ayz)
 {
     if(g_vCondFilter.size() == 0)
     {
@@ -402,8 +420,8 @@ uint32_t PcapParse::match_filter(chw::ayz_info& ayz)
 /**
  * @brief 计算条件表达式的值
  * 
- * @param ayz_len   解析pcap得到的长度
- * @param cond_len  匹配条件的长度
+ * @param ayz_len   [in]解析pcap得到的长度
+ * @param cond_len  [in]匹配条件的长度
  * @return uint32_t 匹配成功返回chw::success,失败返回chw::fail
  */
 uint32_t CompareOpt(uint32_t ayz_len, uint32_t cond_len, chw::_operator op)
@@ -431,10 +449,10 @@ uint32_t CompareOpt(uint32_t ayz_len, uint32_t cond_len, chw::_operator op)
 }
 
 /**
- * @brief 匹配frame条件
+ * @brief 依次为匹配frame、eth、IPV4、ipv6、arp、tcp、udp条件
  * 
- * @param ayz   解析后的帧信息
- * @param cond  过滤条件
+ * @param ayz   [in]解析后的帧信息
+ * @param cond  [in]过滤条件
  * @return uint32_t 成功返回chw::success,失败返回chw::fail
  */
 uint32_t PcapParse::match_frame(const chw::ayz_info& ayz, const chw::FilterCond& cond)
@@ -871,11 +889,6 @@ uint32_t PcapParse::UdpDecode(const char* buf, uint16_t caplen, chw::ayz_info& a
         return chw::fail;
     }
 
-    // uint16_t srcPort = ntohs(udpHeader->source);
-    // uint16_t dstPort = ntohs(udpHeader->dest);
-    // // udp负载长度
-    // uint16_t loadLen = ntohs(udpHeader->len) - sizeof(chw::udphdr);
-
     return chw::success;
 }
 
@@ -907,15 +920,6 @@ uint32_t PcapParse::TcpDecode(const char* buf, uint16_t caplen, chw::ayz_info& a
     }
 
     return chw::success;
-
-    // chw::tcphdr* tcpHeader = (chw::tcphdr*)(buf);
-
-    // uint16_t srcPort = ntohs(tcpHeader->source);
-    // uint16_t dstPort = ntohs(tcpHeader->dest);
-    // // tcp负载长度
-    // uint16_t loadLen = caplen - tcpHeader->doff * 4;
-
-    // todo:匹配tcp过滤条件
-
-    // PrintD("tcp srcPort=%d,dstPort=%d,loadLen=%u",srcPort,dstPort,loadLen);
 }
+
+} //namespace chw

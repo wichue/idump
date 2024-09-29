@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "JsonCondition.h"
 
 #include "File.h"
@@ -6,9 +9,16 @@
 #include "GlobalValue.h"
 #include "util.h"
 
-void JsonCondition::ParseJson(char* jsonpath)
+namespace chw {
+
+/**
+ * @brief 解析json文件获取匹配条件
+ * 
+ * @param jsonpath	[in]json文件路径
+ */
+void JsonCondition::ParseJson(const char* jsonpath)
 {
-    std::string json = chw::File::loadFile(jsonpath);
+    std::string json = chw::loadFile(jsonpath);
 
     //1.解析字符串，获取json value
     picojson::value val_root;
@@ -52,3 +62,5 @@ void JsonCondition::ParseJson(char* jsonpath)
         }
     }
 }
+
+}// namespace chw

@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #ifndef        __MEMORY_HANDLE_H
 #define        __MEMORY_HANDLE_H
 

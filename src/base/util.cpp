@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "util.h"
 #include <assert.h>
 #include <pthread.h>
@@ -31,6 +34,11 @@ static std::string limitString(const char *name, size_t max_size) {
     return str;
 }
 
+/**
+ * @brief Set the Thread Name object
+ * 
+ * @param name 
+ */
 void setThreadName(const char *name) {
     assert(name);
 #if defined(__linux) || defined(__linux__) || defined(__MINGW32__)
@@ -81,7 +89,11 @@ void setThreadName(const char *name) {
 #endif
 }
 
-
+/**
+ * @brief Get the Thread Name object
+ * 
+ * @return std::string 
+ */
 std::string getThreadName() {
 #if ((defined(__linux) || defined(__linux__)) && !defined(ANDROID)) || (defined(__MACH__) || defined(__APPLE__)) || (defined(ANDROID) && __ANDROID_API__ >= 26) || defined(__MINGW32__)
     std::string ret;
@@ -136,6 +148,31 @@ std::string getThreadName() {
 #endif
 }
 
+/**
+ * @brief TimeSecond
+ * @return 从1970年到现在过去的秒数
+ */
+time_t TimeSecond() {
+    time_t t;
+    time(&t);
+    return t;
+}
+
+/**
+ * @brief TimeSecond
+ * @return 从1970年到现在过去的秒数,精确到6位小数点，微秒
+ */
+double TimeSecond_dob() {
+    struct timeval _time;
+    gettimeofday(&_time, NULL);
+    return (double)(_time.tv_sec * 1000*1000 + _time.tv_usec) /  (1000*1000);
+}
+
+/**
+ * 根据unix时间戳获取本地时间
+ * @param [in]sec unix时间戳
+ * @return tm结构体
+ */
 struct tm getLocalTime(time_t sec) {
     struct tm tm;
 #ifdef _WIN32
@@ -146,6 +183,11 @@ struct tm getLocalTime(time_t sec) {
     return tm;
 }
 
+/**
+ * 获取时间字符串
+ * @param fmt [in]时间格式，譬如%Y-%m-%d %H:%M:%S
+ * @return 时间字符串
+ */
 std::string getTimeStr(const char *fmt, time_t time) {
     if (!time) {
         time = ::time(nullptr);
@@ -187,6 +229,12 @@ bool isIP(const char *str) {
     return is_ipv4(str) || is_ipv6(str);
 }
 
+/**
+ * @brief ipv4地址转换为字符串
+ * 
+ * @param addr  [in]ip地址
+ * @return std::string .分ip地址字符串
+ */
 std::string sockaddr_ipv4(uint32_t addr) {
     char ip[16];
     const char* ret = inet_ntop(AF_INET, &addr, ip, 16);
@@ -199,6 +247,12 @@ std::string sockaddr_ipv4(uint32_t addr) {
     return "";
 }
 
+/**
+ * @brief ipv6地址转换为字符串
+ * 
+ * @param addr  [in]ip地址
+ * @return std::string :分ip地址字符串
+ */
 std::string sockaddr_ipv6(uint8_t* addr) {
     char ip[64];
     const char* ret = inet_ntop(AF_INET6, addr, ip, 64);
@@ -211,16 +265,36 @@ std::string sockaddr_ipv6(uint8_t* addr) {
     return "";
 }
 
+/**
+ * @brief 点分ipv4地址转换为32位网络字节序
+ * 
+ * @param host  [in]点分ip地址
+ * @param addr  [out]32位ip地址
+ * @return int32_t 若成功则为1，若输入不是有效的表达式则为0，若出错则为-1
+ */
 int32_t host2addr_ipv4(const char* host, struct in_addr& addr)
 {
     return inet_pton(AF_INET, host, &addr);
 }
 
+/**
+ * @brief :分ipv6地址转换为128位网络字节序
+ * 
+ * @param host  [in]:分ip地址
+ * @param addr  [out]32位ip地址
+ * @return int32_t 若成功则为1，若输入不是有效的表达式则为0，若出错则为-1
+ */
 int32_t host2addr_ipv6(const char* host, struct in6_addr& addr6)
 {
     return inet_pton(AF_INET6, host, &addr6);
 }
 
+/**
+ * @brief 内存mac地址转换为字符串
+ * 
+ * @param macAddress    [in]mac地址buf
+ * @return std::string  :分mac地址字符串
+ */
 std::string MacBuftoStr(const unsigned char* mac_buf) {
     char str[32] = {0};
     sprintf(str, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -230,6 +304,13 @@ std::string MacBuftoStr(const unsigned char* mac_buf) {
     return str;
 }
 
+/**
+ * @brief :分mac地址字符串转换为6字节buf
+ * 
+ * @param charArray     [in]:分mac地址字符串
+ * @param macAddress    [out]6字节长度buf
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
 uint32_t StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
     if(is_valid_mac_addr(charArray) == chw::fail)
     {
@@ -248,6 +329,12 @@ uint32_t StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
     return chw::success;
 }
 
+/**
+ * @brief 判断字符串是否有效的mac地址
+ * 
+ * @param mac   [in]字符串
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
 uint32_t is_valid_mac_addr(const char* mac) {
     int status;
     const char * pattern = "^([A-Fa-f0-9]{2}[-,:]){5}[A-Fa-f0-9]{2}$";
@@ -325,6 +412,13 @@ std::string exeName(bool isExe /*= true*/) {
     return path.substr(path.rfind('/') + 1);
 }
 
+/**
+ * @brief 字符串分割
+ * 
+ * @param s        [in]输入字符串
+ * @param delim    [in]分隔符
+ * @return std::vector<std::string> 分割得到的子字符串集
+ */
 std::vector<std::string> split(const std::string &s, const char *delim) {
     std::vector<std::string> ret;
     size_t last = 0;
@@ -380,6 +474,13 @@ typedef enum _COLOR_RULE {
 
 const uint32_t COLOR_LEN_RULE = sizeof(LOG_CONST_TABLE[2][1]);
 const uint32_t COLOR_LEN_CLEAR= sizeof(CLEAR_COLOR);
+
+/**
+ * @brief 以16进制打印内存，两个字符表示一个字节，每一行固定字节数量，字节之间有空格
+ * 
+ * @param pBuff [in]内存
+ * @param nLen  [in]内存长度
+ */
 void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
 {
     if (NULL == pBuff || 0 == nLen)
@@ -557,6 +658,11 @@ void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
     PrintD("%s\n", szHex_all);
 }
 
+/**
+ * @brief 判断字符串是否为空
+ * @param value [in]入参字符串
+ * @return true字符串为空，false字符串不为空
+ */
 bool StrIsNull(const char *value)
 {
     if(!value || value[0] == '\0')
@@ -567,6 +673,11 @@ bool StrIsNull(const char *value)
     return false;
 }
 
+/**
+ * @brief 将16进制字符转换为10进制
+ * @param hex   [in]16进制字符
+ * @return      转换后的10进制
+ */
 unsigned char HextoInt(unsigned char hex)
 {
     const int DEC = 10;
@@ -587,6 +698,11 @@ unsigned char HextoInt(unsigned char hex)
     return 0;
 }
 
+/**
+ * @brief 16进制表示字符串转换成16进制内存buf ("0080"字符串 -> 查看内存是0080)
+ * @param value [in]要转换的字符串
+ * @return      返回转换的结果
+ */
 std::string StrHex2StrBuf(const char *value)
 {
     if(StrIsNull(value))
@@ -641,6 +757,12 @@ std::string StrHex2StrBuf(const char *value, char wild_card)
     return result;
 }
 
+/**
+ * @brief 将内存buffer转换成16进制形式字符串(内存16进制0800->"0800"字符串)
+ * @param value [in]buffer
+ * @param len   [in]长度
+ * @return      转换后的字符串
+ */
 std::string HexBuftoString(const unsigned char *value, int len)
 {
     std::string result(len * 2, '\0');
@@ -653,6 +775,14 @@ std::string HexBuftoString(const unsigned char *value, int len)
     return std::move(result);
 }
 
+/**
+ * @brief 替换字符串中的子串
+ * 
+ * @param str   [in]字符串
+ * @param find  [in]子串
+ * @param rep   [in]替换为的串
+ * @return std::string 替换后的字符串
+ */
 std::string replaceAll(const std::string& str, const std::string& find, const std::string& rep)
 {
     std::string::size_type pos = 0;
@@ -667,32 +797,67 @@ std::string replaceAll(const std::string& str, const std::string& find, const st
     return res;
 }
 
-
+/**
+ * @brief 取4字节整数的低4位，高28位补0，示例:100(...0110 0100)——>4(...0000 0100)
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int32_t int32_lowfour(int32_t num)
 {
 	return num & 0xF;
 }
 
+/**
+ * @brief 取4字节整数的高4位，低28位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int32_t int32_highfour(int32_t num)
 {
 	return ((num >> 28) & 0xF);
 }
 
+/**
+ * @brief 取2字节整数的低4位，高12位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int16_t int16_lowfour(int16_t num)
 {
 	return num & 0xF;
 }
 
+/**
+ * @brief 取2字节整数的高4位，低12位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int16_t int16_highfour(int16_t num)
 {
     return ((num >> 12) & 0xF);
 }
 
+/**
+ * @brief 取1字节整数的低4位，高4位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int8_t int8_lowfour(int8_t num)
 {
     return num & 0xF;
 }
 
+/**
+ * @brief 取1字节整数的高4位，低4位补0
+ * 
+ * @param num	[in]输入整数
+ * @return 	    转换后的整数
+ */
 int8_t int8_highfour(int8_t num)
 {
     return ((num >> 4) & 0xF);

@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "FilterCondition.h"
 #include <string>
 #include <vector>
@@ -6,6 +9,13 @@
 #include "GlobalValue.h"
 #include "MemoryHandle.h"
 
+namespace chw {
+
+/**
+ * @brief 解析命令行--filter过滤条件
+ * 
+ * @param filter 	过滤条件字符串
+ */
 void FilterCondition::ParseFilter(char* filter)
 {
     std::string filter_trim = chw::replaceAll(filter," ","");
@@ -148,7 +158,7 @@ uint32_t FilterCondition::exp_back2int(chw::FilterCond& cond)
 /**
  * @brief ipv4地址转换为32位网络字节序
  * 
- * @param cond 条件表达式
+ * @param cond [in]条件表达式
  * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
  */
 uint32_t FilterCondition::exp_back2ipv4(chw::FilterCond& cond)
@@ -211,7 +221,7 @@ uint32_t FilterCondition::exp_back2mac(chw::FilterCond& cond)
 }
 
 /**
- * @brief 16进制以太类型转换位10进制
+ * @brief 16进制以太类型转换为10进制
  * 
  * @param cond [in][out]条件表达式
  * @return uint32_t 转换成功或exp_back长度为0返回chw::success，否则返回chw::fail
@@ -541,3 +551,5 @@ uint32_t FilterCondition::ParseFrontExp(chw::FilterCond& cond)
 
 	return chw::success;
 }
+
+}// namespace chw

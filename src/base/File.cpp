@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #if defined(_WIN32)
 #include <io.h>   
 #include <direct.h>
@@ -92,7 +95,7 @@ int closedir(DIR *d) {
 
 namespace chw {
 
-FILE *File::create_file(const char *file, const char *mode) {
+FILE *create_file(const char *file, const char *mode) {
     std::string path = file;
     std::string dir;
     size_t index = 1;
@@ -116,7 +119,7 @@ FILE *File::create_file(const char *file, const char *mode) {
     return ret;
 }
 
-bool File::create_path(const char *file, unsigned int mod) {
+bool create_path(const char *file, unsigned int mod) {
     std::string path = file;
     std::string dir;
     size_t index = 1;
@@ -137,7 +140,7 @@ bool File::create_path(const char *file, unsigned int mod) {
 }
 
 //判断是否为目录
-bool File::is_dir(const char *path) {
+bool is_dir(const char *path) {
     auto dir = opendir(path);
     if (!dir) {
         return false;
@@ -147,7 +150,7 @@ bool File::is_dir(const char *path) {
 }
 
 //判断是否为常规文件
-bool File::fileExist(const char *path) {
+bool fileExist(const char *path) {
     auto fp = fopen(path, "rb");
     if (!fp) {
         return false;
@@ -157,7 +160,7 @@ bool File::fileExist(const char *path) {
 }
 
 //判断是否是特殊目录
-bool File::is_special_dir(const char *path) {
+bool is_special_dir(const char *path) {
     return strcmp(path, ".") == 0 || strcmp(path, "..") == 0;
 }
 
@@ -170,7 +173,7 @@ void get_file_path(const char *path, const char *file_name, char *file_path) {
     strcat(file_path, file_name);
 }
 
-int File::delete_file(const char *path) {
+int delete_file(const char *path) {
     DIR *dir;
     dirent *dir_info;
     char file_path[PATH_MAX];
@@ -192,7 +195,7 @@ int File::delete_file(const char *path) {
     return remove(path) ? _unlink(path) : 0;
 }
 
-string File::loadFile(const char *path) {
+string loadFile(const char *path) {
     FILE *fp = fopen(path, "rb");
     if (!fp) {
         return "";
@@ -208,7 +211,7 @@ string File::loadFile(const char *path) {
     return str;
 }
 
-bool File::saveFile(const string &data, const char *path) {
+bool saveFile(const string &data, const char *path) {
     FILE *fp = fopen(path, "wb");
     if (!fp) {
         return false;
@@ -218,7 +221,7 @@ bool File::saveFile(const string &data, const char *path) {
     return true;
 }
 
-string File::parentDir(const string &path) {
+string parentDir(const string &path) {
     auto parent_dir = path;
     if (parent_dir.back() == '/') {
         parent_dir.pop_back();
@@ -230,7 +233,7 @@ string File::parentDir(const string &path) {
     return parent_dir;
 }
 
-string File::absolutePath(const string &path, const string &current_path, bool can_access_parent) {
+string absolutePath(const string &path, const string &current_path, bool can_access_parent) {
     string currentPath = current_path;
     if (!currentPath.empty()) {
         //当前目录不为空
@@ -278,7 +281,7 @@ string File::absolutePath(const string &path, const string &current_path, bool c
     return currentPath;
 }
 
-void File::scanDir(const string &path_in, const function<bool(const string &path, bool is_dir)> &cb, bool enter_subdirectory) {
+void scanDir(const string &path_in, const function<bool(const string &path, bool is_dir)> &cb, bool enter_subdirectory) {
     string path = path_in;
     if (path.back() == '/') {
         path.pop_back();
@@ -313,7 +316,7 @@ void File::scanDir(const string &path_in, const function<bool(const string &path
     closedir(pDir);
 }
 
-uint64_t File::fileSize(FILE *fp, bool remain_size) {
+uint64_t fileSize(FILE *fp, bool remain_size) {
     if (!fp) {
         return 0;
     }
@@ -324,7 +327,7 @@ uint64_t File::fileSize(FILE *fp, bool remain_size) {
     return end - (remain_size ? current : 0);
 }
 
-uint64_t File::fileSize(const char *path) {
+uint64_t fileSize(const char *path) {
     if (!path) {
         return 0;
     }

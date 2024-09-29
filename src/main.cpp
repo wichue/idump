@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include <setjmp.h>// for setjmp
 #include <stdio.h>// for printf
 #include <stdlib.h>// for exit
@@ -26,7 +29,7 @@ void sigend_handler_abort(int sig)
 void sigend_handler_crash(int sig)
 {
     printf("catch crash signal:%d,exit now.\n",sig);
-    chw_assert();
+	chw::chw_assert();
 }
 
 //todo:windows
@@ -50,16 +53,16 @@ int main(int argc, char **argv)
     chw::CmdLineParse::Instance().parse_arguments(argc,argv);
 
     // 设置日志系统
-    if(gConfigCmd.save == nullptr)
+    if(chw::gConfigCmd.save == nullptr)
     {
         chw::Logger::Instance().add(std::make_shared<chw::ConsoleChannel>());
     }
     else
     {
         std::shared_ptr<chw::FileChannelBase> fc = std::make_shared<chw::FileChannelBase>();
-        if(!fc->setPath(gConfigCmd.save))
+        if(!fc->setPath(chw::gConfigCmd.save))
         {
-            printf("log file path invalid,path=%s\n",gConfigCmd.save);
+            printf("log file path invalid,path=%s\n",chw::gConfigCmd.save);
             exit(1);
         }
         chw::Logger::Instance().add(fc);
@@ -68,37 +71,42 @@ int main(int argc, char **argv)
 
 	PrintD("Input conditions:");
 
-	if(gConfigCmd.filter != nullptr)
+	if(chw::gConfigCmd.filter != nullptr)
 	{
-		FilterCondition fc;
-		fc.ParseFilter(gConfigCmd.filter);
+		chw::FilterCondition fc;
+		fc.ParseFilter(chw::gConfigCmd.filter);
 	}
 
-    if(gConfigCmd.json != nullptr)
+    if(chw::gConfigCmd.json != nullptr)
     {
-        JsonCondition jc;
-        jc.ParseJson(gConfigCmd.json);
+		chw::JsonCondition jc;
+		try {
+        	jc.ParseJson(chw::gConfigCmd.json);
+		} catch(const std::exception &ex) {
+			PrintD("error,parse json file fialed,ex:%s", ex.what());
+			exit(1);
+		};
     }
 	
 	PrintD("\nOutput results:");
 
 	// 比对模式
-	if(gConfigCmd.bCmp == true)
+	if(chw::gConfigCmd.bCmp == true)
 	{
-		if(gConfigCmd.file1 == nullptr || gConfigCmd.file2 == nullptr)
+		if(chw::gConfigCmd.file1 == nullptr || chw::gConfigCmd.file2 == nullptr)
 		{
         	PrintD("error: compare model, invalid file1 or file2.");
 			PrintD("--help for usage method.");
 			exit(1);
 		}
-		PcapCompare::Instance().CompareFile();
+		chw::PcapCompare::Instance().CompareFile();
 	}
 	else
 	{
-	    if(gConfigCmd.file != nullptr)
+	    if(chw::gConfigCmd.file != nullptr)
     	{
-	        PcapParse pp;
-        	pp.parse_file(gConfigCmd.file);
+			chw::PcapParse pp;
+        	pp.parse_file(chw::gConfigCmd.file);
 	    }
     	else
 	    {

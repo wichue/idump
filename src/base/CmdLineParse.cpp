@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "CmdLineParse.h"
 #include <getopt.h>// for getopt_long
 #include <stdlib.h>// for exit
@@ -10,6 +13,13 @@ namespace chw {
 
 INSTANCE_IMP(CmdLineParse)
 
+/**
+ * @brief 解析命令行参数
+ * 
+ * @param argc		[in]参数数量
+ * @param argv		[in]参数指针
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
 int CmdLineParse::parse_arguments(int argc, char **argv)
 {
     static struct option longopts[] = 
@@ -77,15 +87,12 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
         }
     }
 
-    return 0;
+    return chw::fail;
 }
 
-int32_t CmdLineParse::printf_help()
-{
-	printf("--help for usage method.");
-    return 0;
-}
-
+/**
+ * @brief 打印帮助
+ */
 void CmdLineParse::help()
 {
 	version();
@@ -110,6 +117,9 @@ void CmdLineParse::help()
 	exit(0);
 }
 
+/**
+ * @brief 打印版本
+ */
 void CmdLineParse::version()
 {
 #ifdef WIN32

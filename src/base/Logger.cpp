@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include <sys/stat.h>
 #include <cstdarg>
 #include <iostream>
@@ -442,9 +445,9 @@ bool FileChannelBase::open() {
     _fstream.close();
 #if !defined(_WIN32)
     //创建文件夹
-    File::create_path(_path.data(), S_IRWXO | S_IRWXG | S_IRWXU);
+    create_path(_path.data(), S_IRWXO | S_IRWXG | S_IRWXU);
 #else
-    File::create_path(_path.data(),0);
+    create_path(_path.data(),0);
 #endif
     _fstream.open(_path.data(), ios::out | ios::app);
     if (!_fstream.is_open()) {
@@ -497,7 +500,7 @@ FileChannel::FileChannel(const string &name, const string &dir, LogLevel level) 
     }
 
     //收集所有日志文件
-    File::scanDir(_dir, [this](const string &path, bool isDir) -> bool {
+    scanDir(_dir, [this](const string &path, bool isDir) -> bool {
         if (!isDir && end_with(path, ".log")) {
             _log_file_map.emplace(path);
         }
@@ -559,7 +562,7 @@ void FileChannel::clean() {
             break;
         }
         //这个文件距今超过了一定天数，则删除文件
-        File::delete_file(it->data());
+        delete_file(it->data());
         //删除这条记录
         it = _log_file_map.erase(it);
     }
@@ -572,7 +575,7 @@ void FileChannel::clean() {
             break;
         }
         //删除文件
-        File::delete_file(it->data());
+        delete_file(it->data());
         //删除这条记录
         _log_file_map.erase(it);
     }

@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "PcapCompare.h"
 
 #include <thread>
@@ -7,6 +10,7 @@
 #include "PcapParse.h"
 #include "Logger.h"
 #include "MemoryHandle.h"
+#include "FuncPerfStic.h"
 
 /*
 # 默认文本格式打开
@@ -22,6 +26,9 @@ vim -b ens33.pcap
 84 00 00 00 00 01 00 00  00 04 06 5f 64 6f 73 76
 85 00 00 00 00 01 00 00  00 04 06 5f 64 6f 73 76
 */
+
+namespace chw {
+
 INSTANCE_IMP(PcapCompare)
 
 static chw::Semaphore sem;
@@ -32,9 +39,13 @@ void ParseThread(PcapParse* cap,char* file)
 	sem.post();
 }
 
-
+/**
+ * @brief 按字节比对两个pcap文件
+ * 
+ */
 void PcapCompare::CompareFile()
 {
+	chw::PERF_STIC(0);
 	PcapParse cap1;
 	PcapParse cap2;
 
@@ -80,3 +91,5 @@ void PcapCompare::CompareFile()
     sem.wait();
     sem.wait();
 }
+
+}// namespace chw

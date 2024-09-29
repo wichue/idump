@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #ifndef __COMMON_PROTOCOL_H
 #define __COMMON_PROTOCOL_H
 
@@ -35,8 +38,8 @@ struct time_val
 struct pcap_pkthdr
 {
     struct time_val ts;  /* time stamp */
-    uint32_t caplen; /* length of portion present */
-    uint32_t len;    /* length this packet (off wire) */
+    uint32_t caplen; /* length of portion present 实际捕获包的长度*/
+    uint32_t len;    /* length this packet (off wire) 包的长度*/
 };
 
 // 以太头
@@ -79,7 +82,7 @@ struct ip4hdr {
 #endif
 	uint8_t	tos;// 服务类型字段(8位)
 	uint16_t	tot_len;//总长度字段(16位)是指整个IP数据报的长度
-	uint16_t	id;//总长度字段(16位)是指整个IP数据报的长度,
+	uint16_t	id;//标识，用于分片处理，同一数据报的分片具有相同的标识
 	uint16_t	frag_off;//分段偏移
 	uint8_t	ttl;//TTL
 	uint8_t	protocol;//协议字段

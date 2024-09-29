@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "BackTrace.h"
 #include <errno.h>
 #include <sstream>
@@ -8,6 +11,8 @@
 #include <map>
 #include <vector>
 using namespace std;
+
+namespace chw {
 
 const int maxLogBuf = 4 * 1024 * 1024;
 
@@ -155,3 +160,4 @@ void chw_assert()
     assert(0);
 }
 
+}// namespace chw

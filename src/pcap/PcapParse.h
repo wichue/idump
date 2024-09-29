@@ -1,14 +1,24 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #ifndef __PCAP_PARSE_H
 #define __PCAP_PARSE_H
 
 #include "ComProtocol.h"
 #include <stddef.h>
 
+namespace chw {
+
 class PcapParse {
 public:
     PcapParse();
     ~PcapParse();
 
+    /**
+     * @brief 解析pcap文件
+     * 
+     * @param filename	pcap文件路径
+     */
     void parse_file(char* filename);
 private:
 
@@ -25,18 +35,27 @@ private:
     /**
      * @brief 对每一帧匹配JSON文件读取的条件
      * 
-     * @param buf   帧buf
-     * @param size  帧长度
+     * @param buf   [in]帧buf
+     * @param size  [in]帧长度
+     * @param start [out]匹配成功的开始位置,用于输出显示颜色
+     * @param end	[out]匹配成功的终止位置
      * @return std::string 匹配到的描述，没有匹配到则为空
      */
 	std::string match_json(char* buf, size_t size, uint32_t& start, uint32_t& end);
-	uint32_t match_filter(chw::ayz_info& ayz);
 
     /**
-     * @brief 匹配frame条件
+     * @brief 对每一帧获取的信息，匹配命令行--filter过滤条件
      * 
-     * @param ayz   解析后的帧信息
-     * @param cond  过滤条件
+     * @param ayz	[in]解析获取的帧信息
+     * @return uint32_t 匹配成功返回chw::success,失败返回chw::fail
+     */
+	uint32_t match_filter(const chw::ayz_info& ayz);
+
+    /**
+     * @brief 依次为匹配frame、eth、IPV4、ipv6、arp、tcp、udp条件
+     * 
+     * @param ayz   [in]解析后的帧信息
+     * @param cond  [in]过滤条件
      * @return uint32_t 成功返回chw::success,失败返回chw::fail
      */
 	uint32_t match_frame(const chw::ayz_info& ayz, const chw::FilterCond& cond);
@@ -93,14 +112,14 @@ private:
      */
     uint32_t TcpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz);
 private:
-    uint32_t mPackIndex;
+    uint32_t mPackIndex;	// 帧序号
 
-    char* _filename;
-    char* _buf;
-    size_t _fileSize;
+    char* _filename;		// pcap文件路径
+    char* _buf;				// 存储文件的buf
+    size_t _fileSize;		// 文件大小
 public:
-    chw::ComMatchBuf _cmpbuf;
+    chw::ComMatchBuf _cmpbuf;// 比对信息
 };
 
-
+}// namespace chw
 #endif //__PCAP_PARSE_H

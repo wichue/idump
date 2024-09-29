@@ -1,3 +1,6 @@
+// Copyright (c) 2024 The idump project authors. SPDX-License-Identifier: MIT.
+// This file is part of idump(https://github.com/wichue/idump).
+
 #include "SignalCatch.h"
 #include <signal.h>
 
@@ -16,6 +19,10 @@ SignalCatch::~SignalCatch()
     signal(SIGPIPE, SIG_DFL);// 管道信号恢复默认动作
 }
 
+/**
+ * @brief catch signal，处理用户操作导致的中断
+ * 
+ */
 void SignalCatch::CustomAbort(void (*handler)(int))
 {
 #ifdef SIGINT// 由应用程序用户生成的交互式注意信号，Ctrl+c
@@ -29,6 +36,11 @@ void SignalCatch::CustomAbort(void (*handler)(int))
 #endif
 }
 
+/**
+ * @brief catch signal，处理非用户操作导致的中断 
+ * 
+ * @param handler 
+ */
 void SignalCatch::CustomCrash(void (*handler)(int))
 {
 #ifdef SIGSEGV//  segmentation violation，无效的内存引用，或发生段错误
