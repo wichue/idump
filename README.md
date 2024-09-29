@@ -43,16 +43,17 @@ sudo make install
         --end(-l), compare model,the end offset of msg,without this option end offset is 0.
 ```
 ### 使用示例1，过滤报文
-要解析的pcap文件是ens33.pcap，filter过滤条件是'udp.length<400'，json匹配条件文件是../config/filter.json，最多打印100个字节的报文内容，结果输出到控制台。
+要解析的pcap文件是ens33.pcap，filter过滤条件是'udp.length<400'，json匹配条件文件是../config/filter.json，最多打印100个字节的报文内容，结果输出到控制台，以太协议类型、IP头、TCP/UDP头和json匹配字段高亮显示。
 ```shell
 ./idump --file=ens33.pcap --filter='udp.length<400' --json=../config/filter.json --max=100
 ```
+![demo1](https://github.com/wichue/idump/blob/master/res/demo1.png)
 ### 使用示例2，比对报文
 -c比对模式，比较ens33.pcap和ens33.pcap.2两个报文，满足filter和json匹配条件，每帧报文首部偏移14个字节，尾部偏移4个字节，结果保存到22.txt文件。
 ```shell
 ./idump -c --file1=ens33.pcap --file2=ens33.pcap.2 --filter=udp --json=../config/filter.json --start=14 --end=4 --save=22.txt
 ```
-
+![demo2](https://github.com/wichue/idump/blob/master/res/demo2.png)
 ## 自定义协议过滤--json匹配条件
 - name：json条件名。
 - start：每一帧匹配的开始字节位置，从0开始。
