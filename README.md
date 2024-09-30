@@ -45,20 +45,23 @@ sudo make install
 ### 使用示例1，过滤报文
 要解析的pcap文件是ens33.pcap，filter过滤条件是'udp.length<400'，json匹配条件文件是../config/filter.json，最多打印100个字节的报文内容，结果输出到控制台。
 ```shell
-./idump --file=ens33.pcap --filter='udp.length<400' --json=../config/filter.json --max=100
+./idump --file=ens33.pcap --filter='udp.length<500' --json=../config/filter.json --max=100
 ```
+![demo1](https://github.com/wichue/idump/blob/master/res/demo1.png)
 ### 使用示例2，比对报文
--c比对模式，比较ens33.pcap和ens33.pcap.2两个报文，满足filter和json匹配条件，每帧报文首部偏移14个字节，尾部偏移4个字节，结果保存到22.txt文件。
+-c比对模式，比较ens33.pcap和ens33_2.pcap两个抓包文件，满足filter和json匹配条件，每帧报文首部偏移14个字节，尾部偏移4个字节，结果保存到22.txt文件。
 ```shell
-./idump -c --file1=ens33.pcap --file2=ens33.pcap.2 --filter=udp --json=../config/filter.json --start=14 --end=4 --save=22.txt
+./idump -c --file1=ens33.pcap --file2=ens33_2.pcap --filter=udp --json=../config/filter.json --start=14 --end=4 --save=22.txt
 ```
+![demo2](https://github.com/wichue/idump/blob/master/res/demo2.png)
 
-## 自定义协议过滤--json匹配条件
+## --json匹配条件，自定义协议过滤
 - name：json条件名。
 - start：每一帧匹配的开始字节位置，从0开始。
 - compare：要匹配的16进制串，2位表示一个字节，2的整数倍。
+- compare：支持通配符*，2个*表示一个字节，通配任何字节， *的个数是2的整数倍。
 - desc：满足当前匹配条件的描述，会显示在打印输出的最后一列。
-- 示例文件：config/filter.json，json数组列出了3个条件，多个条件是或的关系，满足任意一个即是满足json条件。
+- 示例文件：config/filter.json，json数组列出了3个条件，多个条件是或的关系，优先匹配排在前面的条件，满足任意一个即是满足json条件。
 ```shell
 {
     "name": "cond1",
@@ -69,18 +72,17 @@ sudo make install
             "desc": "heart"
         },
         {
-            "start": "64",
-            "compare": "8400",
+            "start": "72",
+            "compare": "00030b64",
             "desc": "hand"
         },
         {
             "start": "12",
-            "compare": "86dd",
-            "desc": "ipv6"
+            "compare": "86dd********0193",
+            "desc": "ipv6_com"
         }
     ]
 }
-
 ```
 
 ## --filter过滤条件，使用``单引号包围

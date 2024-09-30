@@ -2,7 +2,12 @@
 // This file is part of idump(https://github.com/wichue/idump).
 
 #include "CmdLineParse.h"
+#ifdef WIN32
+#include "getopt.h"
+#else
 #include <getopt.h>// for getopt_long
+#endif
+
 #include <stdlib.h>// for exit
 #include <stdio.h>// for printf
 

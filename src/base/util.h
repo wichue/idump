@@ -140,6 +140,15 @@ std::string exeDir(bool isExe = true);
 std::string exeName(bool isExe = true);
 
 /**
+ * @brief 统计字符串中包含某字符的数量
+ * 
+ * @param msg		[in]字符串
+ * @param c			[in]字符
+ * @return 字符数量
+ */
+uint32_t count_char(const std::string& msg, char c);
+
+/**
  * @brief 字符串分割
  * 
  * @param s        [in]输入字符串
@@ -147,6 +156,15 @@ std::string exeName(bool isExe = true);
  * @return std::vector<std::string> 分割得到的子字符串集
  */
 std::vector<std::string> split(const std::string& s, const char *delim);
+
+/**
+ * @brief 字符串分割
+ * 
+ * @param s        [in]输入字符串
+ * @param delim    [in]分隔符
+ * @return std::vector<spit_string> 分割得到的子字符串集结构体
+ */
+std::vector<spit_string> split_pos(const std::string &s, const char *delim);
 
 /**
  * @brief 以16进制打印内存，两个字符表示一个字节，每一行固定字节数量，字节之间有空格

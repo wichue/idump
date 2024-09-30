@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <string>
 #include <netinet/in.h>// for in_addr in6_addr
+#include <vector>
 
 namespace chw {
 
@@ -322,12 +323,21 @@ struct ConfigCmd
     }
 };
 
+//分隔后的字符串，标识该字符串在原字符串的开始位置
+struct spit_string{
+	uint32_t uIndex;	//该字段的开始位置,单位字节
+	std::string str;	//字段
+};
+
 //从json文件读取的匹配条件
 struct CondJson
 {
     uint16_t start;//比较的起始位置，从0开始
-    std::string compare;//要比较的16进制字符串，和该字符串相同则满足条件，*为通配符
+    std::string compare;//要比较的16进制字符串，和该字符串相同则满足条件，*为通配符，2个*表示一个字节
     std::string desc;//满足当前条件报文的描述，会输出到日志上
+
+	uint32_t totalLen;//匹配条件的总字节数量，包含通配符
+	std::vector<spit_string> vsCompare;//由通配符分隔的多个匹配字段
 };
 
 // 条件表达式之间的关系运算符

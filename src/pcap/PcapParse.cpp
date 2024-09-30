@@ -226,7 +226,7 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 			{
 				if(_cmpbuf.size >= _cmpbuf.uDiff)
 				{
-					uint32_t uCurrDiff = pcapHeader->caplen - (_cmpbuf.size - _cmpbuf.uDiff);
+					uint32_t uCurrDiff = pcapHeader->caplen - (_cmpbuf.size - _cmpbuf.uDiff + gConfigCmd.end);
 					PrintD("file:%s,diff happend frame number:%u,byte number:%u.", filename, mPackIndex, uCurrDiff);
 					break;
 				}
@@ -289,26 +289,38 @@ std::string PcapParse::match_json(char* buf, size_t size, uint32_t& start, uint3
             continue;
         }
 
-        if(iter->start + iter->compare.size() -1 > size)
+        if(iter->start + iter->totalLen -1 > size)
         {
 			iter ++;
             continue;
         }
 
-        if(iter->compare.size() == 0)
+        if(iter->totalLen == 0)
         {
 			iter ++;
             continue;
         }
 
-        //todo:匹配通配符
-        if(_RAM_CMP_(iter->compare.c_str(), iter->compare.size(), buf + iter->start, iter->compare.size()) == 0)
-        {
+		bool not_match = false;
+		auto ite_sub = iter->vsCompare.begin();
+		while(ite_sub != iter->vsCompare.end())
+		{
+        	if(_RAM_CMP_(ite_sub->str.c_str(), ite_sub->str.size(), buf + iter->start + ite_sub->uIndex, ite_sub->str.size()) != 0)
+	        {
+				not_match = true;
+	            break;
+    	    }
+			ite_sub++;
+		}
+		//匹配成功
+		if(not_match == false)
+		{
             desc = iter->desc;
 			start = iter->start;
-			end = start + iter->compare.size() - 1;
+			end = start + iter->totalLen - 1;
             break;
-        }
+		}
+
         iter ++;
     }
 

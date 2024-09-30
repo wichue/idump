@@ -50,9 +50,16 @@ void JsonCondition::ParseJson(const char* jsonpath)
                 chw::CondJson tCondJson;
                 //6.array 数组使用迭代遍历，每个元素转换为object解析
                 const picojson::object &obj_i = (*i).get<picojson::object>();
-                tCondJson.start = atoi(obj_i.at("start").get<std::string>().c_str());
+
                 std::string cmp = obj_i.at("compare").get<std::string>();
-                tCondJson.compare = chw::StrHex2StrBuf(cmp.c_str(),'*');
+				if(split_wildcard(cmp,tCondJson) == chw::fail)
+				{
+					index++;
+					PrintD("Invalid json compare condition:%s, an * or char represents 2 bytes,erase it.", cmp.c_str());
+					continue;
+				}
+
+                tCondJson.start = atoi(obj_i.at("start").get<std::string>().c_str());
                 tCondJson.desc = obj_i.at("desc").get<std::string>();
 
                 PrintD("cond index=%d,start=%u,compare=%s,desc=%s",index, tCondJson.start, cmp.c_str(), tCondJson.desc.c_str());
@@ -61,6 +68,44 @@ void JsonCondition::ParseJson(const char* jsonpath)
             }
         }
     }
+}
+
+/**
+ * @brief 分隔通配符，获取每一个匹配字段
+ *
+ * @param compare	[in]json文件读取的compare
+ * @param condj		[out]json条件结构体
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t JsonCondition::split_wildcard(const std::string& compare, CondJson& condj)
+{
+	condj.totalLen = compare.size();
+	if(condj.totalLen % 2 != 0)
+	{
+		PrintD("json compare number must integer times of 2.An * or char represents 2 bytes,compare:%s.", compare.c_str());
+		return chw::fail;
+	}
+	condj.totalLen /= 2;
+
+	condj.vsCompare = split_pos(compare,"*");
+	auto iter = condj.vsCompare.begin();
+	while(iter != condj.vsCompare.end())
+	{
+		std::string ret = chw::StrHex2StrBuf(iter->str.c_str());
+		if(ret.size() == 0)
+		{
+			iter = condj.vsCompare.erase(iter);
+			return chw::fail;
+		}
+		else
+		{
+			iter->str = ret;
+			iter->uIndex /= 2;
+			iter ++;
+		}
+	}
+
+	return condj.vsCompare.size() == 0 ? chw::fail : chw::success;
 }
 
 }// namespace chw

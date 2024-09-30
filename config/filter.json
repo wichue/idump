@@ -7,14 +7,14 @@
             "desc": "heart"
         },
         {
-            "start": "64",
-            "compare": "8400",
+            "start": "72",
+            "compare": "00030b64",
             "desc": "hand"
         },
         {
             "start": "12",
-            "compare": "86dd",
-            "desc": "ipv6"
+            "compare": "86dd********0193",
+            "desc": "ipv6_com"
         }
     ]
 }

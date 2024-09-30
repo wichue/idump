@@ -1,12 +1,8 @@
 cmake_minimum_required(VERSION 2.8) #设置cmake最低版本
-project("idump" CXX)	#设置项目名称
+project("idump")	#设置项目名称
 SET(PREFIX ${CMAKE_CURRENT_SOURCE_DIR})#设置普通变量，CMAKE_CURRENT_SOURCE_DIR为当前cmake文件目录
 SET(BINDIR /usr/bin)
 message (">>> pwd = ${PREFIX}")#打印变量
-
-if(UBUSYS)
-  add_definitions(-D_UBUSYS_) # 宏定义 _UBUSYS_，类似代码里的#define
-endif()
 
 # 添加依赖头文件目录
 SET(INCDIR
@@ -31,16 +27,11 @@ SET(SRCS
     ${PREFIX}/src/pcap/JsonCondition.cpp
 	${PREFIX}/src/pcap/FilterCondition.cpp
     ${PREFIX}/src/pcap/PcapCompare.cpp
+    ${PREFIX}/src/common/getopt.c
 )
 
 SET(SRCS ${SRCS}
 )
-
-#添加依赖库目录
-# SET(LIBDIR
-#     ${PREFIX}/lib
-# )
-# LINK_DIRECTORIES(${LIBDIR})
 
 #添加依赖库
 SET(LIB_SO

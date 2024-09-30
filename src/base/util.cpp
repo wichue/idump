@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <regex.h>
+#include <algorithm>
 
 #include "local_time.h"
 #include "Logger.h"
@@ -413,6 +414,18 @@ std::string exeName(bool isExe /*= true*/) {
 }
 
 /**
+ * @brief 统计字符串中包含某字符的数量
+ * 
+ * @param msg		[in]字符串
+ * @param c			[in]字符
+ * @return 字符数量
+ */
+uint32_t count_char(const std::string& msg, char c)
+{
+	return std::count(msg.begin(), msg.end(), c);
+}
+
+/**
  * @brief 字符串分割
  * 
  * @param s        [in]输入字符串
@@ -432,6 +445,37 @@ std::vector<std::string> split(const std::string &s, const char *delim) {
     }
     if (!s.size() || s.size() - last > 0) {
         ret.push_back(s.substr(last));
+    }
+    return ret;
+}
+
+
+/**
+ * @brief 字符串分割
+ * 
+ * @param s        [in]输入字符串
+ * @param delim    [in]分隔符
+ * @return std::vector<spit_string> 分割得到的子字符串集结构体
+ */
+std::vector<spit_string> split_pos(const std::string &s, const char *delim) {
+    std::vector<spit_string> ret;
+    size_t last = 0;
+    auto index = s.find(delim, last);
+    while (index != std::string::npos) {
+        if (index - last > 0) {
+			spit_string sp;
+			sp.uIndex = last;
+			sp.str = s.substr(last, index - last);
+            ret.push_back(std::move(sp));
+        }
+        last = index + strlen(delim);
+        index = s.find(delim, last);
+    }
+    if (!s.size() || s.size() - last > 0) {
+		spit_string sp;
+		sp.uIndex = last;
+		sp.str = s.substr(last);
+        ret.push_back(std::move(sp));
     }
     return ret;
 }

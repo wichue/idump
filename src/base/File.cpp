@@ -201,7 +201,7 @@ string loadFile(const char *path) {
         return "";
     }
     fseek(fp, 0, SEEK_END);
-    auto len = ftell(fp);
+    size_t len = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     string str(len, '\0');
     if (len != fread((char *)str.data(), 1, str.size(), fp)) {
