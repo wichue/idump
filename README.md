@@ -43,7 +43,7 @@ sudo make install
         --end(-l), compare model,the end offset of msg,without this option end offset is 0.
 ```
 ### 使用示例1，过滤报文
-要解析的pcap文件是ens33.pcap，filter过滤条件是'udp.length<400'，json匹配条件文件是../config/filter.json，最多打印100个字节的报文内容，结果输出到控制台。
+要解析的pcap文件是ens33.pcap，filter过滤条件是'udp.length<400'，json匹配条件文件是../config/filter.json，最多打印100个字节的报文内容，结果输出到控制台，以太协议类型、IP头、TCP/UDP头和json匹配字段高亮显示。
 ```shell
 ./idump --file=ens33.pcap --filter='udp.length<500' --json=../config/filter.json --max=100
 ```
