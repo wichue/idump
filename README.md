@@ -24,6 +24,16 @@ make
 sudo make install
 ```
 ### windows
+以VS2019为例：
+- 创建新项目，空项目，右键源文件，添加-现有项，把源码文件添加进来。
+- 右键项目名，属性，配置属性，C/C++，常规，附加包含目录，把依赖的头文件目录添加进来。
+- 右键项目名，属性，配置属性，C/C++，预处理器，预处理器定义，添加预处理宏定义：
+```shell
+_CRT_SECURE_NO_WARNINGS
+_WINSOCK_DEPRECATED_NO_WARNINGS
+_CRT_NONSTDC_NO_DEPRECATE
+```
+- 右键项目名，生成即可。
 
 ## 命令行参数
 ```shell
@@ -85,8 +95,9 @@ sudo make install
 }
 ```
 
-## --filter过滤条件，使用``单引号包围
+## --filter过滤条件
 实现了常用的wireshark过滤条件。
+注意：linux平台使用``单引号包围，windows平台使用""双引号包围。
 - frame
 ```shell
 frame.len==60		# 包的长度
