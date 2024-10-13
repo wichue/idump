@@ -27,7 +27,6 @@ SET(SRCS
     ${PREFIX}/src/pcap/JsonCondition.cpp
 	${PREFIX}/src/pcap/FilterCondition.cpp
     ${PREFIX}/src/pcap/PcapCompare.cpp
-    ${PREFIX}/src/common/getopt.c
 )
 
 SET(SRCS ${SRCS}

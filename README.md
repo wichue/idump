@@ -1,3 +1,5 @@
+简体中文 | [English](./README_en.md)
+
 # 纯C++实现的pcap文件解析工具
 
 [![](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/wichue/idump/blob/master/LICENSE)
@@ -27,20 +29,20 @@ sudo make install
 
 ## 命令行参数
 ```shell
-        --help(-h) for help.
-        --version(-v) for version info.
+    --help(-h) for help.
+    --version(-v) for version info.
 
-        --file(-f), pcap file to parse,default model,without -c.
-        --json(-j), json match condition,from file.
-        --filter(-f), cmd line filter condition,like wireshark.
-        --save(-s), log output to file,without this option,log output to console.
-        --max(-m), print msg by bytes up to max,without this option or 0,do not print msg details.
+    --file(-f), pcap file to parse,default model,without -c.
+    --json(-j), json match condition,from file.
+    --filter(-f), cmd line filter condition,like wireshark.
+    --save(-s), log output to file,without this option,log output to console.
+    --max(-m), print msg by bytes up to max,without this option or 0,do not print msg details.
 
-        --compare(-c),compare by byte,must option:file1,file2,can use --json and --filter conditions.
-        --file1(-a),one of pcap file for compare.
-        --file2(-b),one of pcap file for compare.
-        --start(-k), compare model,the begin offset of msg,without this option begin offset is 0.
-        --end(-l), compare model,the end offset of msg,without this option end offset is 0.
+    --compare(-c),compare by byte,must option:file1,file2,can use --json and --filter conditions.
+    --file1(-a),one of pcap file for compare.
+    --file2(-b),one of pcap file for compare.
+    --start(-k), compare model,the begin offset of msg,without this option begin offset is 0.
+    --end(-l), compare model,the end offset of msg,without this option end offset is 0.
 ```
 ### 使用示例1，过滤报文
 要解析的pcap文件是ens33.pcap，filter过滤条件是'udp.length<400'，json匹配条件文件是../config/filter.json，最多打印100个字节的报文内容，结果输出到控制台，以太协议类型、IP头、TCP/UDP头和json匹配字段高亮显示。
