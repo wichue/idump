@@ -11,12 +11,16 @@ INSTANCE_IMP(SignalCatch)
 SignalCatch::SignalCatch()
 {
     /* Ignore SIGPIPE to simplify error handling */
+#if defined(__linux__) || defined(__linux)
     signal(SIGPIPE, SIG_IGN);
+#endif// defined(__linux__) || defined(__linux)
 }
 
 SignalCatch::~SignalCatch()
 {
+#if defined(__linux__) || defined(__linux)
     signal(SIGPIPE, SIG_DFL);// 管道信号恢复默认动作
+#endif// defined(__linux__) || defined(__linux)
 }
 
 /**

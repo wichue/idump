@@ -3,27 +3,43 @@
 
 #include "util.h"
 #include <assert.h>
-#include <pthread.h>
+//#include <pthread.h>
 #include <limits.h>//for PATH_MAX
-#include <unistd.h>
+//#include <unistd.h>
 #include <string.h>
 #include <string>
 #include <time.h>
-#include <arpa/inet.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <netinet/in.h>
+//#include <arpa/inet.h>
+//#include <sys/ioctl.h>
+//#include <sys/socket.h>
+//#include <net/if.h>
+//#include <netinet/in.h>
 #include <stdio.h>
 #include <sys/types.h>
+#if defined(__linux__) || defined(__linux)
 #include <regex.h>
+#endif// defined(__linux__) || defined(__linux)
 #include <algorithm>
+#include <iostream>
+#include <regex>
+#include <string>
 
 #include "local_time.h"
 #include "Logger.h"
 #include "MemoryHandle.h"
 #include "GlobalValue.h"
+#include "File.h"
 
+#if defined(_WIN32)
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
+extern "C" const IMAGE_DOS_HEADER __ImageBase;
+#endif // defined(_WIN32)
+
+using namespace std;
 namespace chw {
 
 static std::string limitString(const char *name, size_t max_size) {
@@ -49,7 +65,7 @@ void setThreadName(const char *name) {
 #elif defined(_MSC_VER)
     // SetThreadDescription was added in 1607 (aka RS1). Since we can't guarantee the user is running 1607 or later, we need to ask for the function from the kernel.
     using SetThreadDescriptionFunc = HRESULT(WINAPI * )(_In_ HANDLE hThread, _In_ PCWSTR lpThreadDescription);
-    static auto setThreadDescription = reinterpret_cast<SetThreadDescriptionFunc>(::GetProcAddress(::GetModuleHandle("Kernel32.dll"), "SetThreadDescription"));
+    static auto setThreadDescription = reinterpret_cast<SetThreadDescriptionFunc>(::GetProcAddress(::GetModuleHandle((LPCWSTR)"Kernel32.dll"), "SetThreadDescription"));
     if (setThreadDescription) {
         // Convert the thread name to Unicode
         wchar_t threadNameW[MAX_PATH];
@@ -313,7 +329,7 @@ std::string MacBuftoStr(const unsigned char* mac_buf) {
  * @return uint32_t 成功返回chw::success,失败返回chw::fail
  */
 uint32_t StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
-    if(is_valid_mac_addr(charArray) == chw::fail)
+    if(isValidMacAddress(charArray) == false)
     {
         return chw::fail;
     }
@@ -330,6 +346,17 @@ uint32_t StrtoMacBuf(const char* charArray, unsigned char* macAddress) {
     return chw::success;
 }
 
+bool isValidMacAddress(const std::string& mac) {
+    // Regular expression for MAC address
+    std::regex macRegex(
+        "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
+    );
+
+    // Check if the string matches the MAC address regex
+    return std::regex_match(mac, macRegex);
+}
+
+#if defined(__linux__) || defined(__linux)
 /**
  * @brief 判断字符串是否有效的mac地址
  * 
@@ -369,6 +396,7 @@ failed:
     regfree(&reg);
     return chw::fail;
 }
+#endif// defined(__linux__) || defined(__linux)
 
 std::string exePath(bool isExe /*= true*/) {
     char buffer[PATH_MAX * 2 + 1] = {0};
@@ -411,6 +439,30 @@ std::string exeDir(bool isExe /*= true*/) {
 std::string exeName(bool isExe /*= true*/) {
     auto path = exePath(isExe);
     return path.substr(path.rfind('/') + 1);
+}
+
+// string转小写
+std::string& strToLower(std::string& str) {
+    transform(str.begin(), str.end(), str.begin(), towlower);
+    return str;
+}
+
+// string转大写
+std::string& strToUpper(std::string& str) {
+    transform(str.begin(), str.end(), str.begin(), towupper);
+    return str;
+}
+
+// string转小写
+std::string strToLower(std::string&& str) {
+    transform(str.begin(), str.end(), str.begin(), towlower);
+    return std::move(str);
+}
+
+// string转大写
+std::string strToUpper(std::string&& str) {
+    transform(str.begin(), str.end(), str.begin(), towupper);
+    return std::move(str);
 }
 
 /**
@@ -489,7 +541,7 @@ static const WORD LOG_CONST_TABLE[][3] = {
         {0xE7, 0x0E , 'W'},//黄底灰字，黑底黄字
         {0xC7, 0x0C , 'E'} };//红底灰字，黑底红字
 
-bool SetConsoleColor(WORD Color)
+bool SetConsoleColor2(WORD Color)
 {
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (handle == 0)
@@ -531,43 +583,43 @@ void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
     {
         return;
     }
+#if defined(__linux__) || defined(__linux)
+    // 输出到命令行使用颜色，输出到日志不使用颜色
+    uint32_t net_hdrlen = 0;
+    uint32_t trans_hdrlen = 0;
+    if (gConfigCmd.save == nullptr)
+    {
+        // 计算网络层和传输层头长度
+        if (ayz.ipver == IPV4)
+        {
+            net_hdrlen = ayz.ip4->ihl * 4;
+        }
+        else if (ayz.ipver == IPV6)
+        {
+            net_hdrlen = sizeof(chw::ip6hdr);
+        }
 
-	// 输出到命令行使用颜色，输出到日志不使用颜色
-	uint32_t net_hdrlen = 0;
-	uint32_t trans_hdrlen = 0;
-	if(gConfigCmd.save == nullptr)
-	{
-		// 计算网络层和传输层头长度
-		if(ayz.ipver == IPV4)
-		{
-			net_hdrlen = ayz.ip4->ihl * 4;
-		}
-		else if(ayz.ipver == IPV6)
-		{
-			net_hdrlen = sizeof(chw::ip6hdr);
-		}
-
-		if(ayz.transport == tcp_trans)
-		{
-			trans_hdrlen = ayz.tcp->doff * 4;
-		}
-		else if(ayz.transport == udp_trans)
-		{
-			trans_hdrlen = 8;
-		}
-	}
-
+        if (ayz.transport == tcp_trans)
+        {
+            trans_hdrlen = ayz.tcp->doff * 4;
+        }
+        else if (ayz.transport == udp_trans)
+        {
+            trans_hdrlen = 8;
+        }
+    }
+#endif// defined(__linux__) || defined(__linux)
     static char* szHex_all = (char*)_RAM_NEW_(gConfigCmd.max * 4);
 
     const int nBytePerLine = 16;//每一行显示的字节数
     unsigned char* p = (unsigned char*)pBuff;
 
-    _RAM_SET_(szHex_all,gConfigCmd.max * 4,0,gConfigCmd.max * 4);
+    _RAM_SET_(szHex_all, gConfigCmd.max * 4, 0, gConfigCmd.max * 4);
     uint32_t uIndex = 0;
     uint32_t uCount = 0;
-	COLOR_RULE color = COLOR_NULL;
+    COLOR_RULE color = COLOR_NULL;
 
-    for (uint32_t i=0; i<nLen; ++i)
+    for (uint32_t i = 0; i < nLen; ++i)
     {
 #ifdef WIN32
         sprintf_s(&szHex_all[uIndex], 4, "%02x ", p[i]);// buff长度要多传入1个字节
@@ -575,16 +627,16 @@ void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
         snprintf(&szHex_all[uIndex], 4, "%02x ", p[i]); // buff长度要多传入1个字节
 #endif
         uIndex += 3;//去掉每次拼接加的\0
-        
-		// 前八个和后八个字节中间加空格
-        if (0 == ((i+1) % (nBytePerLine/2)))
+
+        // 前八个和后八个字节中间加空格
+        if (0 == ((i + 1) % (nBytePerLine / 2)))
         {
             szHex_all[uIndex] = ' ';
             uIndex++;
         }
 
         // 以16个字节为一行，进行打印
-        if (0 == ((i+1) % nBytePerLine))
+        if (0 == ((i + 1) % nBytePerLine))
         {
             szHex_all[uIndex] = '\n';
             uIndex++;
@@ -592,110 +644,113 @@ void PrintBuffer(void* pBuff, unsigned int nLen, chw::ayz_info& ayz)
 
         //设置条件跳出打印
         uCount++;
-		if(uCount >= gConfigCmd.max)
+        if (uCount >= gConfigCmd.max)
         {
-			if(color != COLOR_NULL)
-			{
-				memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
-				color = COLOR_NULL;
-				uIndex += 4;
-			}
+#if defined(__linux__) || defined(__linux)
+            if (color != COLOR_NULL)
+            {
+                memcpy(&szHex_all[uIndex], CLEAR_COLOR, COLOR_LEN_CLEAR);
+                color = COLOR_NULL;
+                uIndex += 4;
+            }
+#endif// defined(__linux__) || defined(__linux)
             szHex_all[uIndex++] = '.';
             szHex_all[uIndex++] = '.';
             szHex_all[uIndex++] = '.';
 
             break;
         }
+#if defined(__linux__) || defined(__linux)
+        if (gConfigCmd.save == nullptr)
+        {
+            // JSON匹配条件添加颜色规则，优先级最高
+            if (i == ayz.json_start - 1)
+            {
+                if (color != COLOR_NULL)
+                {
+                    memcpy(&szHex_all[uIndex], CLEAR_COLOR, COLOR_LEN_CLEAR);
+                    color = COLOR_NULL;
+                    uIndex += 4;
+                }
+                memcpy(&szHex_all[uIndex], LOG_CONST_TABLE[4][1], COLOR_LEN_RULE);
+                uIndex += 5;
+                color = COLOR_JSON_COND;
+            }
+            if (i == ayz.json_end)
+            {
 
-		if(gConfigCmd.save == nullptr)
-		{
-			// JSON匹配条件添加颜色规则，优先级最高
-			if(i == ayz.json_start - 1)
-			{
-				if(color != COLOR_NULL)
-				{
-					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
-					color = COLOR_NULL;
-					uIndex += 4;
-				}
-				memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[4][1],COLOR_LEN_RULE);
-				uIndex += 5;
-				color = COLOR_JSON_COND;
-			}
-			if(i == ayz.json_end)
-			{
+                if (color == COLOR_JSON_COND)
+                {
+                    memcpy(&szHex_all[uIndex], CLEAR_COLOR, COLOR_LEN_CLEAR);
+                    color = COLOR_NULL;
+                    uIndex += 4;
+                }
+                }
+            // ETH类型，固定2字节
+            if (i == 11)
+            {
+                if (color == COLOR_NULL)
+                {
+                    memcpy(&szHex_all[uIndex], LOG_CONST_TABLE[2][1], COLOR_LEN_RULE);
 
-				if(color == COLOR_JSON_COND)
-				{
-					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
-					color = COLOR_NULL;
-					uIndex += 4;
-				}
-			}
-			// ETH类型，固定2字节
-			if(i == 11)
-			{
-				if(color == COLOR_NULL)
-				{
-					memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[2][1],COLOR_LEN_RULE);
+                    uIndex += 5;
+                    color = COLOR_ETH_TYPE;
+                }
+            }
+            if (i == 13)
+            {
+                if (color == COLOR_ETH_TYPE)
+                {
+                    memcpy(&szHex_all[uIndex], CLEAR_COLOR, COLOR_LEN_CLEAR);
+                    color = COLOR_NULL;
+                    uIndex += 4;
+                }
+            }
 
-					uIndex += 5;
-					color = COLOR_ETH_TYPE;
-				}
-			}
-			if(i == 13)
-			{
-				if(color == COLOR_ETH_TYPE)
-				{
-					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
-					color = COLOR_NULL;
-					uIndex += 4;
-				}
-			}
+            // 网络层头部添加颜色规则
+            if (i >= 13 && i < 13 + net_hdrlen)
+            {
+                if (color == COLOR_NULL)
+                {
+                    memcpy(&szHex_all[uIndex], LOG_CONST_TABLE[0][1], COLOR_LEN_RULE);
 
-			// 网络层头部添加颜色规则
-			if(i >= 13 && i < 13 + net_hdrlen)
-			{
-				if(color == COLOR_NULL)
-				{
-					memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[0][1],COLOR_LEN_RULE);
+                    uIndex += 5;
+                    color = COLOR_NETWORK_HDR;
+                }
+            }
+            if (i == 13 + net_hdrlen)
+            {
+                if (color == COLOR_NETWORK_HDR)
+                {
+                    memcpy(&szHex_all[uIndex], CLEAR_COLOR, COLOR_LEN_CLEAR);
+                    color = COLOR_NULL;
+                    uIndex += 4;
+                }
+                }
 
-					uIndex += 5;
-					color = COLOR_NETWORK_HDR;
-				}
-			}
-			if(i == 13 + net_hdrlen)
-			{
-				if(color == COLOR_NETWORK_HDR)
-				{
-					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
-					color = COLOR_NULL;
-					uIndex += 4;
-				}
-			}
+            // 传输层头部添加颜色规则
+            if (i == 13 + net_hdrlen)
+            {
+                if (color == COLOR_NULL)
+                {
+                    memcpy(&szHex_all[uIndex], LOG_CONST_TABLE[1][1], COLOR_LEN_RULE);
 
-			// 传输层头部添加颜色规则
-			if(i == 13 + net_hdrlen)
-			{
-				if(color == COLOR_NULL)
-				{
-					memcpy(&szHex_all[uIndex],LOG_CONST_TABLE[1][1],COLOR_LEN_RULE);
+                    uIndex += 5;
+                    color = COLOR_NETWORK_HDR;
+                }
+            }
+            if (i == 13 + net_hdrlen + trans_hdrlen)
+            {
+                if (color == COLOR_NETWORK_HDR)
+                {
+                    memcpy(&szHex_all[uIndex], CLEAR_COLOR, COLOR_LEN_CLEAR);
+                    color = COLOR_NULL;
+                    uIndex += 4;
+                }
+            }
 
-					uIndex += 5;
-					color = COLOR_NETWORK_HDR;
-				}
-			}
-			if(i == 13 + net_hdrlen + trans_hdrlen)
-			{
-				if(color == COLOR_NETWORK_HDR)
-				{
-					memcpy(&szHex_all[uIndex],CLEAR_COLOR,COLOR_LEN_CLEAR);
-					color = COLOR_NULL;
-					uIndex += 4;
-				}
-			}
-
-		}
+            }
+#endif// defined(__linux__) || defined(__linux)
     }
     szHex_all[uIndex] = '\0';
 
@@ -906,5 +961,64 @@ int8_t int8_highfour(int8_t num)
 {
     return ((num >> 4) & 0xF);
 }
+
+
+#if defined(_WIN32)
+void sleep(int second) {
+    Sleep(1000 * second);
+}
+void usleep(int micro_seconds) {
+    this_thread::sleep_for(std::chrono::microseconds(micro_seconds));
+}
+
+int gettimeofday(struct timeval* tp, void* tzp) {
+    auto now_stamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    tp->tv_sec = (decltype(tp->tv_sec))(now_stamp / 1000000LL);
+    tp->tv_usec = now_stamp % 1000000LL;
+    return 0;
+}
+
+const char* strcasestr(const char* big, const char* little) {
+    string big_str = big;
+    string little_str = little;
+    strToLower(big_str);
+    strToLower(little_str);
+    auto pos = strstr(big_str.data(), little_str.data());
+    if (!pos) {
+        return nullptr;
+    }
+    return big + (pos - big_str.data());
+}
+
+int vasprintf(char** strp, const char* fmt, va_list ap) {
+    // _vscprintf tells you how big the buffer needs to be
+    int len = _vscprintf(fmt, ap);
+    if (len == -1) {
+        return -1;
+    }
+    size_t size = (size_t)len + 1;
+    char* str = (char*)malloc(size);
+    if (!str) {
+        return -1;
+    }
+    // _vsprintf_s is the "secure" version of vsprintf
+    int r = vsprintf_s(str, len + 1, fmt, ap);
+    if (r == -1) {
+        free(str);
+        return -1;
+    }
+    *strp = str;
+    return r;
+}
+
+int asprintf(char** strp, const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int r = vasprintf(strp, fmt, ap);
+    va_end(ap);
+    return r;
+}
+
+#endif //WIN32
 
 } /* namespace chw */

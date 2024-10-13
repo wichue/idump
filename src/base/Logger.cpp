@@ -6,9 +6,9 @@
 #include <iostream>
 #include <string.h>
 #include <time.h>
-#include <sys/time.h> 
+//#include <sys/time.h> 
 #include <stdio.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include "Logger.h"
 // #include "onceToken.h"
 #include "File.h"
@@ -17,9 +17,6 @@
 #if defined(_WIN32)
 #include "strptime_win.h"
 #endif
-#ifdef ANDROID
-#include <android/log.h>
-#endif //ANDROID
 
 #if defined(__MACH__) || ((defined(__linux) || defined(__linux__)) && !defined(ANDROID))
 #include <sys/syslog.h>

@@ -4,7 +4,6 @@
 #include <setjmp.h>// for setjmp
 #include <stdio.h>// for printf
 #include <stdlib.h>// for exit
-#include <unistd.h>//for usleep
 #include <signal.h>//for SIG_DFL
 
 #include "CmdLineParse.h"
