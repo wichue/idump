@@ -68,12 +68,12 @@ The pcap file to be parsed is ens33.pcap, the filter condition is' udp.length<40
     "conds": [
         {
             "start": "42",
-            "compare": "7e60",
+            "compare": "7e 60",
             "desc": "heart"
         },
         {
             "start": "72",
-            "compare": "00030b64",
+            "compare": "00 03 0b 64",
             "desc": "hand"
         },
         {
@@ -85,8 +85,10 @@ The pcap file to be parsed is ens33.pcap, the filter condition is' udp.length<40
 }
 ```
 
-## --filter,Filter criteria, enclosed in single quotes
+## --filter,Filter criteria
 Implemented commonly used Wireshark filtering conditions.
+
+Note: Linux platforms use single quotes, while Windows platforms use double quotes.
 - frame
 ```shell
 frame.len==60		# The length of the bag

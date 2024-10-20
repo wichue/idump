@@ -153,6 +153,8 @@ std::string exePath(bool isExe = true);
 std::string exeDir(bool isExe = true);
 //返回可执行文件名
 std::string exeName(bool isExe = true);
+// 返回文件后缀名
+const char* suffixname(const char* filename);
 
 // string转小写
 std::string& strToLower(std::string& str);

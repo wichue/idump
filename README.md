@@ -80,12 +80,12 @@ _CRT_NONSTDC_NO_DEPRECATE
     "conds": [
         {
             "start": "42",
-            "compare": "7e60",
+            "compare": "7e 60",
             "desc": "heart"
         },
         {
             "start": "72",
-            "compare": "00030b64",
+            "compare": "00 03 0b 64",
             "desc": "hand"
         },
         {

@@ -52,6 +52,7 @@ void JsonCondition::ParseJson(const char* jsonpath)
                 const picojson::object &obj_i = (*i).get<picojson::object>();
 
                 std::string cmp = obj_i.at("compare").get<std::string>();
+                cmp = chw::replaceAll(cmp," ","");
 				if(split_wildcard(cmp,tCondJson) == chw::fail)
 				{
 					index++;

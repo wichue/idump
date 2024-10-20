@@ -441,6 +441,12 @@ std::string exeName(bool isExe /*= true*/) {
     return path.substr(path.rfind('/') + 1);
 }
 
+#define _strrchr_dot(str) strrchr(str, '.')
+const char* suffixname(const char* filename) {
+    const char* pos = _strrchr_dot(filename);
+    return pos ? pos+1 : "";
+}
+
 // string转小写
 std::string& strToLower(std::string& str) {
     transform(str.begin(), str.end(), str.begin(), towlower);

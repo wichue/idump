@@ -40,6 +40,11 @@ PcapParse::~PcapParse()
  */
 void PcapParse::parse_file(char* filename)
 {
+    if(strcmp(suffixname(filename),"pcap") != 0)
+    {
+        PrintD("error: only support .pcap file,please convert to .pcap,file:%s", filename);
+        exit(1);
+    }
     _filename = filename;
 
     struct stat st;
