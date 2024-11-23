@@ -77,12 +77,13 @@ void PcapParse::parse_file(char* filename)
 		_cmpbuf.buf = _buf;
 	}
 
-    FILE* fp = fopen(filename, "r");
+    FILE* fp = fopen(filename, "rb+");
     if (!fp)
     {
         PrintD("open file %s failed, errno=%d errmsg=%s", filename, errno, strerror(errno));
         exit(1);
     }
+    // win:系统默认文件结束符为ctrl+z，而0x1A的ASCII值恰巧与ctrl+z的ASCII值相等，所以遇到 0x1A fread就不再读文件。解决方法是修改文件打开方式为二进制："rb+"
     fread(_buf, sizeof(char), _fileSize, fp);
     fclose(fp);
 
