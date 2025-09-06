@@ -447,6 +447,11 @@ const char* suffixname(const char* filename) {
     return pos ? pos+1 : "";
 }
 
+bool contains(const std::string& str, const std::string& sub) {
+    if (str.length() < sub.length()) return false;
+    return str.find(sub) != std::string::npos;
+}
+
 // string转小写
 std::string& strToLower(std::string& str) {
     transform(str.begin(), str.end(), str.begin(), towlower);

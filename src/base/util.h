@@ -155,6 +155,8 @@ std::string exeDir(bool isExe = true);
 std::string exeName(bool isExe = true);
 // 返回文件后缀名
 const char* suffixname(const char* filename);
+// 字符串str是否包含子字符串sub
+bool contains(const std::string& str, const std::string& sub);
 
 // string转小写
 std::string& strToLower(std::string& str);
