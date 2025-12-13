@@ -41,11 +41,13 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
         {"file2", required_argument, NULL, 'b'},
         {"start", required_argument, NULL, 'k'},
         {"end", required_argument, NULL, 'l'},
+        {"model", required_argument, NULL, 'M'},
+        {"ethtype", required_argument, NULL, 'e'},
         {NULL, 0, NULL, 0}
     };
     int flag;
    
-    while ((flag = getopt_long(argc, argv, "hvf:s:g:m:j:ca:b:k:l:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "hvf:s:g:m:j:ce:a:b:k:l:M:", longopts, NULL)) != -1) {
         switch (flag) {
             case 'f':
                 gConfigCmd.file = optarg;
@@ -76,6 +78,12 @@ int CmdLineParse::parse_arguments(int argc, char **argv)
                 break;
             case 'l':
                 gConfigCmd.end = atoi(optarg);
+                break;
+            case 'e':
+                gConfigCmd.eth_type = atoi(optarg);
+                break;
+            case 'M':
+                gConfigCmd.model = atoi(optarg);
                 break;
             case 'h':
 				help();
@@ -116,7 +124,10 @@ void CmdLineParse::help()
 			"	--file1(-a),one of pcap file for compare.\n"
 			"	--file2(-b),one of pcap file for compare.\n"
 			"	--start(-k), compare model,the begin offset of msg,without this option begin offset is 0.\n"
-			"	--end(-l), compare model,the end offset of msg,without this option end offset is 0.\n"
+			"	--end(-l), compare model,the end offset of msg,without this option end offset is 0.\n\n"
+
+            "	--model(-M), custom model,0(default),2(stat diameter mar/maa resopnse time).\n"\
+            "	--ethtype(-e), eth header type,0(default,normal),1(Linux cooked capture v1 SSL),2(Linux cooked capture v2 SSL2).\n"
 			);
 
 	exit(0);

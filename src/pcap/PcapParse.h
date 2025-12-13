@@ -111,6 +111,16 @@ private:
      * @return uint32_t 成功返回chw::success,失败返回chw::fail
      */
     uint32_t TcpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz);
+
+    /**
+     * @brief 解析sctp
+     * 
+     * @param buf       [in]ip负载buf
+     * @param caplen    [in]ip负载，即tcp头和tcp负载总长度
+     * @param ayz       [out]解析的信息
+     * @return uint32_t 成功返回chw::success,失败返回chw::fail
+     */
+    uint32_t SctpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz);
 private:
     uint32_t mPackIndex;	// 帧序号
 

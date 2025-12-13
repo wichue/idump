@@ -15,6 +15,8 @@
 #include "Logger.h"
 #include "MemoryHandle.h"
 #include "GlobalValue.h"
+#include "Sctp.h"
+#include "Diameter.h"
 
 namespace chw {
 
@@ -66,7 +68,7 @@ void PcapParse::parse_file(char* filename)
     {
 	    try {
 	        _buf = (char*)_RAM_NEW_(_fileSize + 1);
-	    } catch(std::bad_alloc) {
+	    } catch(const std::bad_alloc &) {
 	    	PrintD("malloc buf failed, size=%u",_fileSize + 1);
 	    	exit(1);
 	    }
@@ -159,16 +161,59 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 		offset += (pcapHeader->caplen + sizeof(chw::pcap_pkthdr));
 
         // 以太头
-        chw::ethhdr* ethHeader = (chw::ethhdr*)(buf + proto_offset);
-        uint16_t protocol = ntohs(ethHeader->h_proto);
-        ayz.eth = ethHeader;
+        // chw::ethhdr* ethHeader = (chw::ethhdr*)(buf + proto_offset);
+        // uint16_t protocol = ntohs(ethHeader->h_proto);
+        // ayz.eth = ethHeader;
+        uint32_t eth_len = 0; // 以太头的长度
+        uint16_t protocol = 0; // 网络层协议类型
 
         // 协议类型，如果是ipv4或ipv6，且是已知的tcp/udp等传输层协议，则显示传输层协议，如果是未知的则显示16进制值
-        std::string str_Protocol = chw::HexBuftoString((const unsigned char*)&ethHeader->h_proto,2);//0800,86dd
+        std::string str_Protocol = "";//0800,86dd
         // ipv4和ipv6显示目的IP地址，其他显示目的MAC地址
-        std::string str_Destination = chw::MacBuftoStr((const unsigned char*)(ethHeader->h_dest));
+        std::string str_Destination = "";
         // ipv4和ipv6显示源IP地址，其他显示源MAC地址
-        std::string str_Source = chw::MacBuftoStr((const unsigned char*)(ethHeader->h_source));
+        std::string str_Source = "";
+
+        if(gConfigCmd.eth_type == ETHHDR_SLL)
+        {
+            // sll
+            ayz.eth_sll = (chw::eth_sll_hdr*)(buf + proto_offset);
+            protocol = ntohs(ayz.eth_sll->h_proto);
+            eth_len = sizeof(chw::eth_sll_hdr);
+
+            str_Protocol = chw::HexBuftoString((const unsigned char*)&ayz.eth_sll->h_proto,2);//0800,86dd
+            // str_Destination = chw::MacBuftoStr((const unsigned char*)(ayz.eth_sll->h_dest));
+            str_Source = chw::MacBuftoStr((const unsigned char*)(ayz.eth_sll->h_source));
+        }
+        else if(gConfigCmd.eth_type == ETHHDR_SLL2)
+        {
+            // sll2
+            ayz.eth_sll2 = (chw::eth_sll2_hdr*)(buf + proto_offset);
+            protocol = ntohs(ayz.eth_sll2->h_proto);
+            eth_len = sizeof(chw::eth_sll2_hdr);
+
+            str_Protocol = chw::HexBuftoString((const unsigned char*)&ayz.eth_sll2->h_proto,2);//0800,86dd
+            // str_Destination = chw::MacBuftoStr((const unsigned char*)(ayz.eth_sll2->h_dest));
+            str_Source = chw::MacBuftoStr((const unsigned char*)(ayz.eth_sll2->h_source));
+        }
+        else
+        {
+            // normal
+            ayz.eth = (chw::ethhdr*)(buf + proto_offset);
+            protocol = ntohs(ayz.eth->h_proto);
+            eth_len = sizeof(chw::ethhdr);
+
+            str_Protocol = chw::HexBuftoString((const unsigned char*)&ayz.eth->h_proto,2);//0800,86dd
+            str_Destination = chw::MacBuftoStr((const unsigned char*)(ayz.eth->h_dest));
+            str_Source = chw::MacBuftoStr((const unsigned char*)(ayz.eth->h_source));
+        }
+        
+        // // 协议类型，如果是ipv4或ipv6，且是已知的tcp/udp等传输层协议，则显示传输层协议，如果是未知的则显示16进制值
+        // std::string str_Protocol = chw::HexBuftoString((const unsigned char*)&ethHeader->h_proto,2);//0800,86dd
+        // // ipv4和ipv6显示目的IP地址，其他显示目的MAC地址
+        // std::string str_Destination = chw::MacBuftoStr((const unsigned char*)(ethHeader->h_dest));
+        // // ipv4和ipv6显示源IP地址，其他显示源MAC地址
+        // std::string str_Source = chw::MacBuftoStr((const unsigned char*)(ethHeader->h_source));
 
         // ip 协议
         switch(protocol)
@@ -176,12 +221,12 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
             case 0x0800:
                 str_Protocol = "ipv4";
                 ayz.ipver = chw::IPV4;
-                Ipv4Decode(buf + proto_offset + sizeof(chw::ethhdr), pcapHeader->caplen - (uint32_t)sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
+                Ipv4Decode(buf + proto_offset + eth_len, pcapHeader->caplen - eth_len, str_Protocol, str_Destination, str_Source, ayz);
                 break;
             case 0x86dd:
                 str_Protocol = "ipv6";
                 ayz.ipver = chw::IPV6;
-                Ipv6Decode(buf + proto_offset + sizeof(chw::ethhdr), pcapHeader->caplen - sizeof(chw::ethhdr), str_Protocol, str_Destination, str_Source, ayz);
+                Ipv6Decode(buf + proto_offset + eth_len, pcapHeader->caplen - eth_len, str_Protocol, str_Destination, str_Source, ayz);
     	        break;
 			case 0x0806:
 				str_Protocol = "ARP";
@@ -210,6 +255,34 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
             continue;
         }
 		match_index ++;
+
+        //5.定制模式
+        //./idump  -f ./dra_20251210_1min.pcap -e 2 -M 2 -s 22.txt
+        //./idump  -f ./local_dra.pcap -e 1 -M 2
+        if(gConfigCmd.model == CUSTOM_MODEL_A)
+        {
+            //sctp 协议的 diameter
+            if(ayz.sctp != nullptr)
+            {
+                Sctp::ParseSctp(ayz);
+            }
+
+            //tcp 协议的 diameter
+
+            //tcp.reassembled_in: wireshark过滤所有重组包,该包不完整，包含了不到1个或不到n个应用层数据，有一部分数据在另一个抓包帧中
+            //tcp.reassembled.length: 过滤补充包，该帧数据是另一个帧(reassembled_in)的补充
+            //上述帧组合到一起是1个或多个完整的应用层数据
+            //为了统计tcp协议下diameter数据的正确性，建议过滤掉上述两种包(!tcp.reassembled.length && !tcp.reassembled_in)，重新生成一个pcap文件进行解析
+
+            //过滤掉非diameter负载的tcp包：端口号根据实际情况配置；应用层数据长度为0的ack消息。
+            if(ayz.tcp != nullptr && (ntohs(ayz.tcp->dest) == 3870 || ntohs(ayz.tcp->source) == 3870 ) && ntohs(ayz.ip4->tot_len) - sizeof(ip4hdr) - sizeof(tcphdr) > 0)
+            {
+                //统计tcp协议的diamter时放开注释
+                // Diameter::ParseChunkData((const char*)ayz.tcp + sizeof(tcphdr),ayz);
+            }
+            
+            continue;
+        }
 
 		// 比对模式
 		if(gConfigCmd.bCmp == true)
@@ -267,8 +340,12 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 	}
 	else
 	{
-		PrintD("total package count:%u", mPackIndex);
-   	 	PrintD("match package count:%u", match_index);
+        if(gConfigCmd.model == CUSTOM_MODEL_A)
+        {
+            PrintD("total package count:%u", mPackIndex);
+            PrintD("match package count:%u", match_index);
+            Diameter::StatDiameter();
+        }
 	}
 
     return chw::success;
@@ -795,6 +872,7 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, uint32_t caplen, std::string& pr
         // PrintD("warn: too big ip4 caplen=%u,toal_len=%u", caplen, toal_len);
     }
 
+    ayz.trans_load_len = toal_len - head_len;
     switch (ipHeader->protocol)
     {
         case 17:// UDP协议
@@ -806,6 +884,9 @@ uint32_t PcapParse::Ipv4Decode(const char* buf, uint32_t caplen, std::string& pr
 		case 1: // ICMP
 			pro = "ICMP";
 			break;
+        case SCTP:
+        	pro = "SCTP";
+            return SctpDecode(buf + head_len, toal_len - head_len, ayz);
         default:
             // 其他协议，待补充
             break;
@@ -861,6 +942,7 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, uint32_t caplen, std::string& pr
         PrintD("warn: too big ip6 caplen=%lu,toal_len=%lu", caplen, toal_len);
     }
 
+    ayz.trans_load_len = load_len;
     // todo:匹配ip过滤条件
     switch (ipHeader->nexthdr)
     {
@@ -873,6 +955,9 @@ uint32_t PcapParse::Ipv6Decode(const char* buf, uint32_t caplen, std::string& pr
 		case 1: // ICMP
 			pro = "ICMP";
 			break;
+        case SCTP:
+        	pro = "SCTP";
+            return SctpDecode(buf + head_len, load_len, ayz);
         default:
             // 其他协议，待补充
             break;
@@ -903,7 +988,8 @@ uint32_t PcapParse::UdpDecode(const char* buf, uint16_t caplen, chw::ayz_info& a
     // chw::udphdr* udpHeader = (chw::udphdr*)(buf);
     if(ntohs(ayz.udp->len) != caplen)
     {
-        PrintD("error: no match udp caplen=%lu,ayz udp len=%lu", caplen,ayz.udp->len);
+        // TODO:经过分片的IP包解析报错
+        // PrintD("error: no match udp caplen=%lu,ayz udp len=%lu", caplen,ayz.udp->len);
         return chw::fail;
     }
 
@@ -933,9 +1019,31 @@ uint32_t PcapParse::TcpDecode(const char* buf, uint16_t caplen, chw::ayz_info& a
     uint16_t head_len = ayz.tcp->doff * 4;
     if(caplen < head_len)
     {
-        PrintD("error: no match tcp caplen=%lu,head_len=%lu", caplen,head_len);
+        PrintD("error: no match tcp caplen=%lu,head_len=%lu,frame num:%lu", caplen,head_len,ayz.uIndex);
         return chw::fail;
     }
+
+    return chw::success;
+}
+
+/**
+ * @brief 解析sctp
+ * 
+ * @param buf       [in]ip负载buf
+ * @param caplen    [in]ip负载，即sctp头和sctp负载总长度
+ * @param ayz       [out]解析的信息
+ * @return uint32_t 成功返回chw::success,失败返回chw::fail
+ */
+uint32_t PcapParse::SctpDecode(const char* buf, uint16_t caplen, chw::ayz_info& ayz)
+{
+    if(caplen < sizeof(chw::sctphdr))
+    {
+        PrintD("error: too small sctp caplen=%lu,frame num:%lu", caplen,ayz.uIndex);
+        return chw::fail;
+    }
+
+    ayz.transport = chw::sctp_trans;
+    ayz.sctp = (chw::sctphdr*)(buf);
 
     return chw::success;
 }

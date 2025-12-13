@@ -64,6 +64,36 @@ struct pcap_pkthdr
     uint32_t len;    /* length this packet (off wire) 包的长度*/
 };
 
+// 以太头类型
+typedef enum {
+    ETHHDR_NORMAL = 0,  // 正常的以太头 [DST_MAC6][SRC_MAC6][IP_TYPE2]
+    // Linux 系统在回环接口或某些虚拟网络接口上抓包时使用的伪链路层头部，因为原始链路帧（如以太网帧）在这些接口上并不存在。
+    ETHHDR_SLL ,     // eth_sll_hdr,用于较旧版本的 libpcap（2019 年前）(Linux cooked capture v1 SSL)
+    ETHHDR_SLL2      // eth_sll2_hdr,2019 年左右引入（libpcap 1.9.0+）(Linux cooked capture v2 SSL2)
+} _ETHHDR_TYPE_;
+
+// Linux cooked capture v1 SSL 以太头,长度16
+struct eth_sll_hdr {
+    uint16_t packet_type;      // 包类型（如发给我们、广播、组播等）
+    uint16_t addr_type;        // 链路层地址类型（ARPHRD_*）
+    uint16_t addr_len;         // 链路层地址长度
+    unsigned char	h_source[ETH_ALEN];	/* source ether addr	*/
+    uint16_t        unused;
+    uint16_t		h_proto;    // 上层协议（以太网类型）
+};
+
+// Linux cooked capture v2 SSL2 以太头,长度20
+struct eth_sll2_hdr {
+    uint16_t		h_proto;            // 上层协议（以太网类型）
+    uint16_t        reserved;           // 保留（未用
+    uint32_t        Interface_index;
+    uint16_t        addr_type;
+    uint8_t         packet_type;
+    uint8_t         addr_len;           // 链路层地址长度（实际）
+    unsigned char	h_source[ETH_ALEN];	/* source ether addr	*/
+    uint16_t        unused;
+};
+
 // 以太头
 struct ethhdr {
 	unsigned char	h_dest[ETH_ALEN];	/* destination eth addr	*/
@@ -239,6 +269,78 @@ struct tcphdr {
 	uint16_t	urg_ptr;//  这个域被用来指示紧急数据在当前数据段中的为止，它是一个相当于当前序列号的字节偏移量。这个设置可以代替中断信息。
 };
 
+// SCTP通用头部
+//[sctphdr][sctpchunkSack]
+//[sctphdr][sctpchunkData][payload/diameterhdr]
+struct sctphdr {
+    uint16_t source_port;
+    uint16_t dest_port;
+    uint32_t verification_tag;
+    uint32_t checksum;
+};
+
+//sctp chunk头
+struct sctpchunkhdr {
+    uint8_t type;//Chunk type
+    uint8_t flags;//Chunk flags
+    uint16_t length;//Chunk length，包含Chunk头和Chunk体
+};
+
+//sctp chunk sack
+struct sctpchunkSack {
+    sctpchunkhdr chunkhdr;
+
+    uint32_t Cumulative_TSN_ACK;
+    uint32_t a_rwnd;
+    uint16_t gap_ack;
+    uint16_t dup_TSNs;
+};
+
+//sctp chunk DATA
+struct sctpchunkData {
+    sctpchunkhdr chunkhdr;
+
+    uint32_t Transmission_sequence_number;
+    uint16_t Stream_identifier;
+    uint16_t Stream_sequence_number;
+    uint32_t Payload_protocol_identifier;
+};
+
+// Diameter协议头部
+struct diameterhdr {
+    uint8_t version;
+    uint8_t length[3];
+    uint8_t flags;
+    uint8_t command_code[3];
+    uint32_t application_id;
+    uint32_t hop_by_hop_id;
+    uint32_t end_to_end_id;
+
+    bool operator==(const diameterhdr& dia) const{return (hop_by_hop_id == dia.hop_by_hop_id) && (end_to_end_id == dia.end_to_end_id); }
+};
+
+/** if the message is a request */
+#define is_diameter_req(flags) ((flags) & 0x80)
+
+struct dia_times {
+    time_val time;
+    uint16_t req_cnt;//抓到的请求总次数
+    uint16_t rsp_cnt;//抓到的响应总次数
+    uint32_t uIndex_fst;//首次解析到的帧序号
+
+    dia_times() {
+        req_cnt = 0;
+        rsp_cnt = 0;
+    }
+
+    dia_times(time_val t ,uint32_t uI,uint16_t req, uint16_t rsp) {
+        req_cnt = 0;
+        rsp_cnt = 0;
+        time = t;
+        uIndex_fst = uI;
+    }
+};
+
 typedef enum {
     IPV4 = 4,
     IPV6 = 6,
@@ -248,6 +350,7 @@ typedef enum {
 typedef enum {
     tcp_trans,
     udp_trans,
+    sctp_trans,
     null_trans
 } _TRANSPORT_;
 
@@ -255,21 +358,22 @@ typedef enum {
 struct ayz_info {
 	pcap_pkthdr* pcap;//frame包头
 	ethhdr* eth;//以太头
+    eth_sll_hdr* eth_sll;
+    eth_sll2_hdr* eth_sll2;
 	uint32_t uIndex;// 帧序号
 	uint32_t json_start;// 匹配到的json条件的起始位置
 	uint32_t json_end;// 匹配搭配的json条件的终止位置
 
 	uint8_t ipver;//ip协议类型
-	union {
-		ip4hdr* ip4;
-		ip6hdr* ip6;
-	};
+    uint32_t trans_load_len;//传输层和负载的总长度
+
+    ip4hdr* ip4;
+    ip6hdr* ip6;
 
     uint8_t transport;//传输层类型
-	union {
-		tcphdr* tcp;
-		udphdr* udp;
-	};
+    tcphdr* tcp;
+    udphdr* udp;
+    sctphdr* sctp;
 
     ayz_info()
     {
@@ -280,9 +384,11 @@ struct ayz_info {
         ip6 = nullptr;
         tcp = nullptr;
         udp = nullptr;
+        sctp = nullptr;
 
         ipver = IP_NULL;
         transport = null_trans;
+        trans_load_len = 0;
     }
 };
 
@@ -310,6 +416,27 @@ struct ComMatchBuf{
 	}
 };
 
+typedef enum {
+    NULL_MODEL,         //无模式
+    COMPARE_MODEL,      //比对模式
+    CUSTOM_MODEL_A      //定制模式A,统计diameter协议MAR/MAA消息的响应时长
+} RUN_MODEL;
+
+typedef enum {
+    ICMP	= 1,	//Internet控制消息协议
+    IGMP	= 2,	//Internet组管理协议
+    TCP		= 6,	//传输控制协议
+    UDP		= 17,	//用户数据报协议
+    SCTP	= 132,	//流控制传输协议
+    IPv6	= 41,	//IPv6封装
+    GRE		= 47,	//通用路由封装
+    ESP		= 50,	//IPsec封装安全载荷
+    AH		= 51,	//IPsec认证头
+    ICMPv6	= 58,	//IPv6的ICMP
+    OSPF	= 89,	//开放最短路径优先
+    EIGRP	= 88,	//增强内部网关路由协议
+} IP_PROTO;
+
 //命令行参数
 struct ConfigCmd
 {
@@ -318,6 +445,7 @@ struct ConfigCmd
     char* json;//过滤条件，从json文件读取(--json)
     char* save;//要保存的文件名(--save)，没有该选项则输出到屏幕
     uint16_t max;//每帧打印报文的最大字节数(--max)，默认0不打印报文内容
+    uint16_t eth_type;//以太头类型(-e,--ethtype)，参考 _ETHHDR_TYPE_,没有该选项默认为0
 
 	//compare model
 	//比对模式，filter和json过滤条件依然有效，不再按帧输出日志，会输出比对结果
@@ -326,7 +454,9 @@ struct ConfigCmd
 	char* file2;//参与比对的文件2(--file2)
     uint32_t start;//比对报文时首部忽略的字节数(--start)，没有该选项默认为0
     uint32_t end;//比对报文时尾部忽略的字节数(--end)，没有该选项默认为0
-
+    
+    //parse model
+    uint32_t model;//定制模式(RUN_MODEL)
 
     ConfigCmd()
     {
@@ -341,6 +471,8 @@ struct ConfigCmd
 		file2 = nullptr;
         start = 0;
         end = 0;
+        model = NULL_MODEL;
+        eth_type = 0;
     }
 };
 

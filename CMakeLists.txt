@@ -10,6 +10,7 @@ ${PREFIX}/src
     ${PREFIX}/src/base
     ${PREFIX}/src/pcap
     ${PREFIX}/src/common
+    ${PREFIX}/src/custom
 )
 INCLUDE_DIRECTORIES(${INCDIR})
 
@@ -27,6 +28,8 @@ SET(SRCS
     ${PREFIX}/src/pcap/JsonCondition.cpp
 	${PREFIX}/src/pcap/FilterCondition.cpp
     ${PREFIX}/src/pcap/PcapCompare.cpp
+    ${PREFIX}/src/custom/Sctp.cpp
+    ${PREFIX}/src/custom/Diameter.cpp
 )
 
 SET(SRCS ${SRCS}

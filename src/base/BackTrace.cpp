@@ -157,7 +157,7 @@ void chw_assert()
         free(symbols);
 #endif
 
-    assert(0);
+    exit(0);
 }
 
 }// namespace chw

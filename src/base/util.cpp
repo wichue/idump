@@ -882,7 +882,8 @@ std::string HexBuftoString(const unsigned char *value, int len)
         sprintf(buff ,"%02x", value[i]);
     }
 
-    return std::move(result);
+    // return std::move(result);
+    return result;
 }
 
 /**

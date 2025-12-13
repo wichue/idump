@@ -14,6 +14,14 @@
 - 比对模式支持按字节比较两个pcap文件，可设置过滤条件和每个报文的首部和尾部偏移，用于分析丢包、错包、乱包等。
 - 支持常用的常规协议过滤，过滤命令类似wireshark。
 
+## customA
+- 定制模式(-M 2)，统计diameter协议MAR/MAA响应时长，支持sctp/tcp协议。
+- 虚拟化主机以太头长度20，需要加选项(-e 2)；以太头长度16需要加选项(-e 1)；以太头长度14不需要加-e选项。
+- 默认统计sctp，tcp协议需要修改代码（放开统计，配置端口号，较少使用，暂时没加命令行参数）。
+```shell
+./idump  -f ./dra_20251210_1min.pcap -e 2 -M 2 -s 22.txt
+```
+
 ## 编译和安装
 ### linux
 ```shell
@@ -53,6 +61,9 @@ _CRT_NONSTDC_NO_DEPRECATE
     --file2(-b),one of pcap file for compare.
     --start(-k), compare model,the begin offset of msg,without this option begin offset is 0.
     --end(-l), compare model,the end offset of msg,without this option end offset is 0.
+
+    --model(-M), custom model,0(default),2(stat diameter mar/maa resopnse time).
+    --ethtype(-e), eth header type,0(default,normal),1(Linux cooked capture v1 SSL),2(Linux cooked capture v2 SSL2).
 ```
 ### 使用示例1，过滤报文
 要解析的pcap文件是ens33.pcap，filter过滤条件是'udp.length<400'，json匹配条件文件是../config/filter.json，最多打印100个字节的报文内容，结果输出到控制台，以太协议类型、IP头、TCP/UDP头和json匹配字段高亮显示。
