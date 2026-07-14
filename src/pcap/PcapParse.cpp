@@ -17,6 +17,7 @@
 #include "GlobalValue.h"
 #include "Sctp.h"
 #include "Diameter.h"
+#include "sip_parser.h"
 
 namespace chw {
 
@@ -256,10 +257,10 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
         }
 		match_index ++;
 
-        //5.定制模式
+        //5.定制模式2
         //./idump  -f ./dra_20251210_1min.pcap -e 2 -M 2 -s 22.txt
         //./idump  -f ./local_dra.pcap -e 1 -M 2
-        if(gConfigCmd.model == CUSTOM_MODEL_A)
+        if(gConfigCmd.model == CUSTOM_MODEL_2)
         {
             //sctp 协议的 diameter
             if(ayz.sctp != nullptr)
@@ -280,6 +281,29 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
                 //统计tcp协议的diamter时放开注释
                 // Diameter::ParseChunkData((const char*)ayz.tcp + sizeof(tcphdr),ayz);
             }
+            
+            continue;
+        }
+        //6.定制模式3，解析sip，统计终端响应NOTIFY(active)状态码
+        //./idump  -f 481.pcap  -e 2 -M 3
+        else if(gConfigCmd.model == CUSTOM_MODEL_3)
+        {
+            // 传输层使用tcp，如果使用其他协议再修改
+            if(ayz.tcp == nullptr)
+            {
+                continue;
+            }
+
+            SipMessage msg;
+            if (ayz.trans_load_len - ayz.tcp->doff * 4 <= 0)
+            {
+                continue; // 负载为0不解析
+            }
+
+            msg.parse((const char*)ayz.tcp + ayz.tcp->doff * 4);
+            msg.match_ci_userAgent(ayz.uIndex);
+
+            // msg.print(ayz.uIndex);
             
             continue;
         }
@@ -340,11 +364,15 @@ uint32_t PcapParse::resolve_each_frame(const char* filename, size_t fileSize, si
 	}
 	else
 	{
-        if(gConfigCmd.model == CUSTOM_MODEL_A)
+        if(gConfigCmd.model == CUSTOM_MODEL_2)
         {
             PrintD("total package count:%u", mPackIndex);
             PrintD("match package count:%u", match_index);
             Diameter::StatDiameter();
+        }
+        else if(gConfigCmd.model == CUSTOM_MODEL_3)
+        {
+            SipMessage::printAgentStat();
         }
 	}
 

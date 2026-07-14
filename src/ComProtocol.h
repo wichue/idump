@@ -419,7 +419,8 @@ struct ComMatchBuf{
 typedef enum {
     NULL_MODEL,         //无模式
     COMPARE_MODEL,      //比对模式
-    CUSTOM_MODEL_A      //定制模式A,统计diameter协议MAR/MAA消息的响应时长
+    CUSTOM_MODEL_2,     //定制模式2,统计diameter协议MAR/MAA消息的响应时长
+    CUSTOM_MODEL_3      //定制模式3,统计sip报文不同终端类型NOTIFY（active）响应的状态码
 } RUN_MODEL;
 
 typedef enum {

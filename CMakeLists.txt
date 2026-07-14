@@ -30,6 +30,7 @@ SET(SRCS
     ${PREFIX}/src/pcap/PcapCompare.cpp
     ${PREFIX}/src/custom/Sctp.cpp
     ${PREFIX}/src/custom/Diameter.cpp
+    ${PREFIX}/src/custom/sip_parser.cpp.cpp
 )
 
 SET(SRCS ${SRCS}
